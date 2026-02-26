@@ -1,5 +1,29 @@
 import { signIn, signUp } from './auth.js';
 
+function showAccountCreatedDialog(container, onContinue) {
+  const wrap = document.createElement('div');
+  wrap.className = 'modal auth-success-modal';
+  wrap.setAttribute('aria-hidden', 'false');
+  wrap.innerHTML = `
+    <div class="modal-backdrop auth-success-backdrop"></div>
+    <div class="modal-content auth-success-content">
+      <h2 class="auth-success-title">Account created</h2>
+      <p class="auth-success-text">You're all set. Welcome to Habbitto.</p>
+      <button type="button" class="btn btn-primary auth-success-btn" id="auth-success-continue">Continue</button>
+    </div>
+  `;
+  container.appendChild(wrap);
+  wrap.classList.add('open');
+  const close = () => {
+    wrap.classList.remove('open');
+    wrap.setAttribute('aria-hidden', 'true');
+    wrap.remove();
+    onContinue?.();
+  };
+  wrap.querySelector('.auth-success-backdrop').addEventListener('click', close);
+  wrap.querySelector('#auth-success-continue').addEventListener('click', close);
+}
+
 export function renderAuthView(container, onSuccess) {
   container.innerHTML = `
     <div class="auth-card">
@@ -54,7 +78,8 @@ export function renderAuthView(container, onSuccess) {
         await signIn(email, password);
       } else {
         await signUp(email, password);
-        alert('Please check your email to confirm your account.');
+        showAccountCreatedDialog(container, onSuccess);
+        return;
       }
       onSuccess?.();
     } catch (err) {

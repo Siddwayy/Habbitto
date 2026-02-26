@@ -257,6 +257,66 @@ body::before {
   justify-content: center;
 }
 
+/* Auth success dialog (first-time sign up) */
+.auth-success-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.auth-success-modal:not(.open) {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.auth-success-modal.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.auth-success-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+}
+
+.auth-success-content {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.auth-success-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 var(--space-sm);
+  color: var(--text);
+}
+
+.auth-success-text {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--space-lg);
+  line-height: 1.5;
+}
+
+.auth-success-btn {
+  width: 100%;
+}
+
 /* Header – title above container */
 .app-header-wrap {
   margin-bottom: var(--space-xl);
