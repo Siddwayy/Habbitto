@@ -171,7 +171,7 @@ export async function initApp() {
         <div class="modal-content session-end-content">
           <h2 class="session-end-title">Congrats! Session ended.</h2>
           <p class="session-end-text">Your focus time has been saved. Take a breath—you did it.</p>
-          <button type="button" class="btn btn-primary session-end-save" id="session-end-save">Save session</button>
+          <button type="button" class="btn btn-primary session-end-save" id="session-end-save">Done</button>
         </div>
       `;
       modal.querySelector('.session-end-backdrop').addEventListener('click', closeSessionEnd);
@@ -233,7 +233,15 @@ export async function initApp() {
     await loadHabits();
     await loadSessions();
     subscribeHabits(() => renderFocusView(main));
-    subscribeTimer(() => renderFocusView(main));
+    let lastTimerRender = 0;
+    subscribeTimer((state) => {
+      if (document.getElementById('modal-custom-habit')?.classList.contains('open')) return;
+      const now = Date.now();
+      const isTicking = state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch';
+      if (isTicking && now - lastTimerRender < 900) return;
+      lastTimerRender = now;
+      renderFocusView(main);
+    });
     setupDateChangeRefresh(main);
     renderFocusView(main);
   };
@@ -308,7 +316,7 @@ export async function initApp() {
         <div class="modal-content session-end-content">
           <h2 class="session-end-title">Congrats! Session ended.</h2>
           <p class="session-end-text">Your focus time has been saved. Take a breath—you did it.</p>
-          <button type="button" class="btn btn-primary session-end-save" id="session-end-save">Save session</button>
+          <button type="button" class="btn btn-primary session-end-save" id="session-end-save">Done</button>
         </div>
       `;
       modal.querySelector('.session-end-backdrop').addEventListener('click', closeSessionEnd);
@@ -355,7 +363,15 @@ export async function initApp() {
     onWorkComplete(addFocusToCompletion);
     await loadHabits();
     subscribeHabits(() => renderFocusView(main));
-    subscribeTimer(() => renderFocusView(main));
+    let lastTimerRender = 0;
+    subscribeTimer((state) => {
+      if (document.getElementById('modal-custom-habit')?.classList.contains('open')) return;
+      const now = Date.now();
+      const isTicking = state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch';
+      if (isTicking && now - lastTimerRender < 900) return;
+      lastTimerRender = now;
+      renderFocusView(main);
+    });
     setupDateChangeRefresh(main);
     renderFocusView(main);
   }

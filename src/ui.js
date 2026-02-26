@@ -87,6 +87,11 @@ export function renderFocusView(container) {
       const m = Math.floor(state.remainingSeconds / 60);
       const s = state.remainingSeconds % 60;
       document.title = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} · ${DEFAULT_TAB_TITLE}`;
+    } else if (state.phase === 'stopwatch' || state.phase === 'stopwatch-paused') {
+      const total = state.stopwatchSeconds;
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      document.title = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} · ${DEFAULT_TAB_TITLE}`;
     } else {
       document.title = DEFAULT_TAB_TITLE;
     }
@@ -202,23 +207,30 @@ export function renderFocusView(container) {
         contentEl.innerHTML = '<p class="time-spent-empty">Add habits to track time spent.</p>';
         return;
       }
-      contentEl.innerHTML = '<div class="time-spent-grid" id="time-spent-grid"></div>';
-      const grid = contentEl.querySelector('#time-spent-grid');
-      habits.forEach((h) => {
+      const cards = habits.map((h) => {
         const mins = timeSpent[h.id] || 0;
-        const el = document.createElement('div');
-        el.className = 'time-spent-card';
-        el.innerHTML = `
-          <span class="time-spent-icon">${habitIconHtml(h.icon)}</span>
-          <span class="time-spent-name">${escapeHtml(h.name)}</span>
-          <span class="time-spent-value">${formatTimeSpent(mins)}</span>
-          <button type="button" class="btn btn-ghost btn-icon time-spent-delete" title="Delete habit">${habitIconHtml('trash', 22)}</button>
+        const streak = getHabitStreak(h.id);
+        const streakText = streak > 0 ? `${streak}d` : '—';
+        return `
+          <div class="time-spent-card" data-habit-id="${escapeHtml(h.id)}">
+            <span class="time-spent-icon">${habitIconHtml(h.icon)}</span>
+            <span class="time-spent-name">${escapeHtml(h.name)}</span>
+            <span class="time-spent-meta">${formatTimeSpent(mins)} · ${escapeHtml(streakText)}</span>
+            <button type="button" class="btn btn-ghost btn-icon time-spent-delete" title="Delete habit">${habitIconHtml('trash', 22)}</button>
+          </div>
         `;
-        el.querySelector('.time-spent-delete').addEventListener('click', async (e) => {
-          e.stopPropagation();
-          if (confirm(`Delete "${h.name}"? This will remove the habit and its time data.`)) await deleteHabit(h.id);
-        });
-        grid.appendChild(el);
+      }).join('');
+      contentEl.innerHTML = `<div class="time-spent-grid-scroll"><div class="time-spent-grid">${cards}</div></div>`;
+      contentEl.querySelectorAll('.time-spent-delete').forEach((btn) => {
+        const card = btn.closest('.time-spent-card');
+        const habitId = card?.dataset.habitId;
+        const habit = habits.find((h) => h.id === habitId);
+        if (habit) {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete "${habit.name}"? This will remove the habit and its time data.`)) await deleteHabit(habit.id);
+          });
+        }
       });
     } else {
       const barAreaHeight = 55;
@@ -332,7 +344,7 @@ export function renderFocusView(container) {
   });
 
   if (saveBtn) saveBtn.addEventListener('click', () => {
-    if (!confirm('Do you want to end and save the focus session?')) return;
+    if (!confirm('End and save this focus session? Your time will be added to the habit.')) return;
     const elapsed = getElapsedWorkMinutes();
     const habitId = getTimerState().habitId;
     if (habitId && elapsed > 0) addFocusToCompletion(habitId, elapsed);
@@ -407,7 +419,7 @@ export function renderFocusView(container) {
     });
     li.querySelector('.habit-delete').addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (confirm(`Delete "${habit.name}"?`)) await deleteHabit(habit.id);
+      if (confirm(`Delete "${habit.name}"? This will remove the habit and its time data.`)) await deleteHabit(habit.id);
     });
     listEl.appendChild(li);
   });
@@ -423,6 +435,7 @@ function openCustomHabitModal(habit) {
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
   renderCustomHabitModal(modal, habit);
+  document.addEventListener('keydown', customHabitEscapeHandler);
 }
 
 function closeCustomHabitModal() {
@@ -430,6 +443,14 @@ function closeCustomHabitModal() {
   if (!modal) return;
   modal.classList.remove('open');
   modal.setAttribute('aria-hidden', 'true');
+  document.removeEventListener('keydown', customHabitEscapeHandler);
+}
+
+function customHabitEscapeHandler(e) {
+  if (e.code === 'Escape') {
+    e.preventDefault();
+    closeCustomHabitModal();
+  }
 }
 
 function renderCustomHabitModal(container, habit) {
