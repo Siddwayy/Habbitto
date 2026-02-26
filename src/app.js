@@ -83,12 +83,16 @@ export async function initApp() {
   const showMain = async (session) => {
     app.innerHTML = `
       <header class="app-header">
-        <button type="button" class="btn btn-ghost btn-account" id="btn-account">Account</button>
+        <div class="header-actions header-actions-left">
+          <button type="button" class="btn btn-account" id="btn-account">Account</button>
+        </div>
         <div class="app-header-center">
           <h1 class="app-title">Habbitto</h1>
           <p class="app-subtitle">Focus</p>
         </div>
-        <button type="button" class="btn btn-ghost btn-logout" id="btn-logout">Log out</button>
+        <div class="header-actions header-actions-right">
+          <button type="button" class="btn btn-logout" id="btn-logout">Log out</button>
+        </div>
       </header>
       <main class="focus-view" id="focus-view"></main>
       <div id="account-modal" class="modal account-modal" aria-hidden="true"></div>

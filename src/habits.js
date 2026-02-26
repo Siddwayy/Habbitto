@@ -211,6 +211,15 @@ export function getTimeSpentPerHabit() {
   return totals;
 }
 
+/** Total focus minutes completed today (from saved sessions). */
+export function getTodayFocusMinutes() {
+  const today = getTodayKey();
+  const completions = getCompletionsList();
+  return completions
+    .filter((c) => c.date === today)
+    .reduce((sum, c) => sum + (c.focusMinutes || 0), 0);
+}
+
 export function subscribeHabits(fn) {
   listeners.push(fn);
   return () => {

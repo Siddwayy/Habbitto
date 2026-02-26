@@ -43,6 +43,18 @@ function formatTimeSpent(minutes) {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+const DURATION_MESSAGES = {
+  30: "Okay, I'm in for a quick session. Let's get warmed up!",
+  45: "Let's go solid this time — not too long, not too short.",
+  60: "A full hour! Time to focus and make it count.",
+  75: "Pushing past the comfort zone — let's keep that momentum going.",
+  90: "Looks like someone wants to lock in. Let's dial in and go all out!",
+};
+
+function getDurationMessage(workMinutes) {
+  return DURATION_MESSAGES[workMinutes] || '';
+}
+
 export function renderFocusView(container) {
   const habits = getHabitsList();
   const state = getTimerState();
@@ -96,12 +108,9 @@ export function renderFocusView(container) {
         </div>
         ${!isStopwatch && state.phase === 'idle' ? `
         <div class="timer-duration-presets" id="timer-duration-presets">
-          <button type="button" class="duration-preset-btn" data-minutes="30">30</button>
-          <button type="button" class="duration-preset-btn" data-minutes="45">45</button>
-          <button type="button" class="duration-preset-btn" data-minutes="60">60</button>
-          <button type="button" class="duration-preset-btn" data-minutes="75">75</button>
-          <button type="button" class="duration-preset-btn" data-minutes="90">90</button>
+          ${[30, 45, 60, 75, 90].map((m) => `<button type="button" class="duration-preset-btn ${state.workDuration / 60 === m ? 'selected' : ''}" data-minutes="${m}">${m}</button>`).join('')}
         </div>
+        ${getDurationMessage(state.workDuration / 60) ? `<p class="timer-duration-message">${escapeHtml(getDurationMessage(state.workDuration / 60))}</p>` : ''}
         ` : ''}
         <div class="timer-controls">
           ${state.phase === 'idle' ? `<button type="button" class="btn btn-primary btn-timer" id="timer-start" ${!state.habitId || !habits.some(h => h.id === state.habitId) ? 'disabled' : ''}>Start</button>` : ''}

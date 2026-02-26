@@ -3,6 +3,7 @@ export function renderAuthView(container, onSuccess) {
     <div class="auth-card">
       <h1 class="app-title">Habbitto</h1>
       <p class="app-subtitle">Focus & Habits</p>
+      <p class="auth-tagline">One place for habits and focus.</p>
       <div class="auth-tabs">
         <button type="button" class="auth-tab active" data-tab="login">Log in</button>
         <button type="button" class="auth-tab" data-tab="signup">Sign up</button>
@@ -13,7 +14,9 @@ export function renderAuthView(container, onSuccess) {
         <label for="auth-password">Password</label>
         <input type="password" id="auth-password" required minlength="6" placeholder="••••••••" />
         <p id="auth-error" class="auth-error" style="display:none"></p>
-        <button type="submit" class="btn btn-primary btn-block" id="auth-submit">Log in</button>
+        <div class="auth-form-actions">
+          <button type="submit" class="btn btn-primary btn-block" id="auth-submit">Log in</button>
+        </div>
       </form>
     </div>
   `;
