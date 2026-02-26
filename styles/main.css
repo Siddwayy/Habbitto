@@ -254,28 +254,34 @@ body::before {
   justify-content: center;
 }
 
-/* Header – single container */
+/* Header – title above container */
+.app-header-wrap {
+  margin-bottom: var(--space-xl);
+  text-align: center;
+}
+
+.app-title-block {
+  margin-bottom: var(--space-md);
+}
+
+.app-title-block .app-title {
+  margin-bottom: 0;
+}
+
+.app-header-wrap .app-title {
+  margin-bottom: var(--space-md);
+}
+
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  margin-bottom: var(--space-xl);
   padding: var(--space-sm) var(--space-lg);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  position: relative;
-}
-
-.app-header-center {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  min-width: 0;
 }
 
 .header-buttons-left {

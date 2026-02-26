@@ -142,19 +142,19 @@ export async function initApp() {
 
   const showMain = async (session) => {
     app.innerHTML = `
-      <header class="app-header">
-        <div class="header-buttons-left">
-          <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
-          <button type="button" class="btn btn-account" id="btn-account">Account</button>
-        </div>
-        <div class="app-header-center">
-          <h1 class="app-title">Habbitto</h1>
-        </div>
-        <div class="header-buttons-right">
-          <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
-          <button type="button" class="btn btn-logout" id="btn-logout">Log out</button>
-        </div>
-      </header>
+      <div class="app-header-wrap">
+        <h1 class="app-title">Habbitto</h1>
+        <header class="app-header">
+          <div class="header-buttons-left">
+            <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
+            <button type="button" class="btn btn-account" id="btn-account">Account</button>
+          </div>
+          <div class="header-buttons-right">
+            <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
+            <button type="button" class="btn btn-logout" id="btn-logout">Log out</button>
+          </div>
+        </header>
+      </div>
       <main class="focus-view" id="focus-view"></main>
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
       <div id="account-modal" class="modal account-modal" aria-hidden="true"></div>
@@ -279,18 +279,20 @@ export async function initApp() {
     });
   } else {
     app.innerHTML = `
-      <header class="app-header">
-        <div class="header-buttons-left">
-          <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
-        </div>
-        <div class="app-header-center">
+      <div class="app-header-wrap">
+        <div class="app-title-block">
           <h1 class="app-title">Habbitto</h1>
           <p class="app-subtitle">using local storage (no account)</p>
         </div>
-        <div class="header-buttons-right">
-          <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
-        </div>
-      </header>
+        <header class="app-header">
+          <div class="header-buttons-left">
+            <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
+          </div>
+          <div class="header-buttons-right">
+            <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
+          </div>
+        </header>
+      </div>
       <main class="focus-view" id="focus-view"></main>
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
       <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
