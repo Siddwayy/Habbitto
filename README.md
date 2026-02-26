@@ -1,54 +1,69 @@
+---
+
 # Habbitto
 
-A habit tracker with an integrated focus (Pomodoro-style) timer and stopwatch. Add habits, track time spent, and use the focus timer or stopwatch linked to any habit.
+**Habit tracker with a built-in focus timer and stopwatch. Build habits one session at a time.**
+
+---
+
+## Overview
+
+Habbitto helps you build habits by tying them to focused work blocks. Instead of only checking “done,” you track **how long** you spent on each habit. A focus timer (30–90 min or custom) and a stopwatch both log time to the habit you choose. Habits can be marked done for the day, and the app shows streaks and total time spent so progress is visible and motivating.
+
+---
 
 ## Features
 
-- **Login & Sign up**: Email/password auth via Supabase
-- **Habit tracker**: Custom habits with icon picker, Time spent per habit
-- **Focus timer**: Preset durations (30, 45, 60, 75, 90 min), circular progress, Save with confirmation
-- **Stopwatch**: Free-flow timing with Save
-- **Per-user data**: All habits and completions stored in Supabase per user
+- **Auth** — Email/password sign up and login via Supabase
+- **Habit tracker** — Custom habits, icon picker, edit/delete, mark done for the day
+- **Focus timer** — Preset durations (30, 45, 60, 75, 90 min), custom duration, circular progress, optional break phase
+- **Stopwatch** — Free-form timing with save to habit
+- **Time & streaks** — Time spent per habit, daily completions, consecutive-day streak counter
+- **Galaxy view** — Visual summary of sessions
+- **Session-end flow** — Congratulatory dialog and optional sound when the focus timer finishes
+- **Guide** — In-app “How it works” with simple steps and icons
+- **Shortcuts** — Space to start/pause/resume; keys 1–5 for duration presets when idle
+- **Offline / local mode** — Works without Supabase using localStorage
 
-## Setup
+---
 
-### 1. Supabase
+## Tech stack
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. In **SQL Editor**, run the contents of `supabase-schema.sql` to create tables and RLS policies
-3. In **Project Settings → API**, copy the Project URL and anon public key
+| Layer      | Tech |
+|-----------|------|
+| Frontend  | Vanilla JavaScript (ES modules), Vite |
+| Backend   | Supabase (Auth, Postgres with RLS) |
+| Storage   | Supabase when signed in; localStorage when not |
+| Styling   | CSS (custom properties, no framework) |
 
-### 2. Environment
+---
 
-Copy `.env.example` to `.env` and add your keys:
+## Design & UX
 
-```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
+- Dark-themed UI with clear typography and accent color
+- Circular progress ring for the timer with a subtle pulse when running
+- Full-width Start button, habit picker with streak badges, empty state (“Create your first habit”)
+- Modals for account, guide, and session-end; tab title shows remaining time when the timer is running
 
-### 3. Email auth
+---
 
-In Supabase **Authentication → Providers → Email**, enable Email and configure:
-- Turn off "Confirm email" if you want sign up without verification (dev only)
+## Links
 
-## Run locally
+- **Live site:** [Add your deployed URL]
+- **Source code:** This repository
 
-```bash
-npm install
-npm run dev
-```
+---
 
-Open the URL shown (e.g. http://localhost:5173).
+## Challenges & learnings
 
-## Build
+- **Supabase RLS** — Policies so users only see and edit their own habits, completions, and sessions
+- **Timer state** — Keeping phase (idle / work / break / stopwatch), intervals, and UI in sync; handling tab visibility for re-renders
+- **Sound and dialog** — Looping completion sound until the user dismisses the session-end dialog, then cleaning up audio and state
 
-```bash
-npm run build
-```
+---
 
-Output is in `dist/`. Serve with any static host. Ensure the hosting URL is added to Supabase **Authentication → URL Configuration** (Site URL and Redirect URLs).
+**Short description for GitHub repo “About” (≤350 chars):**
 
-## Without Supabase
+> Habit tracker with focus timer and stopwatch. Define habits, log time per session, track streaks and time spent. Supabase auth or localStorage. Vanilla JS, Vite, CSS.
 
-If `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are not set, the app runs in local-only mode using localStorage (no login, data stays on device).
+You can paste the full block into `README.md` and the short description into the repo’s **About** → **Description** on GitHub.
