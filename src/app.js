@@ -1,11 +1,13 @@
 import { renderFocusView } from './ui.js';
 import { renderAuthView } from './auth-ui.js';
 import { renderGalaxyView } from './galaxy-ui.js';
+import { renderGuideView } from './guide-ui.js';
 import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId, getHabitsList } from './habits.js';
 import { loadSessions, setUserId as setSessionsUserId, subscribeSessions } from './sessions.js';
-import { subscribeTimer, onWorkComplete, getTimerState, startWork, startStopwatch, pause, pauseStopwatch, resume, setDurations } from './timer.js';
+import { subscribeTimer, onWorkComplete, onSessionEndAlert, getTimerState, startWork, startStopwatch, pause, pauseStopwatch, resume, setDurations, reset } from './timer.js';
 import { getSession, onAuthStateChange, signOut, updatePassword } from './auth.js';
 import { supabase } from './supabase.js';
+import * as sessionEndSound from './session-end-sound.js';
 
 function renderAccountModal(container, session, onClose, onLogout) {
   const user = session?.user;
@@ -141,7 +143,10 @@ export async function initApp() {
   const showMain = async (session) => {
     app.innerHTML = `
       <header class="app-header">
-        <button type="button" class="btn btn-account" id="btn-account">Account</button>
+        <div class="header-buttons-left">
+          <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
+          <button type="button" class="btn btn-account" id="btn-account">Account</button>
+        </div>
         <div class="app-header-center">
           <h1 class="app-title">Habbitto</h1>
         </div>
@@ -151,12 +156,51 @@ export async function initApp() {
         </div>
       </header>
       <main class="focus-view" id="focus-view"></main>
+      <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
       <div id="account-modal" class="modal account-modal" aria-hidden="true"></div>
+      <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
       <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
     `;
     const main = app.querySelector('#focus-view');
+    onSessionEndAlert(() => {
+      const modal = document.getElementById('session-end-modal');
+      if (!modal) return;
+      sessionEndSound.play();
+      modal.innerHTML = `
+        <div class="modal-backdrop session-end-backdrop"></div>
+        <div class="modal-content session-end-content">
+          <h2 class="session-end-title">Congrats! Session ended.</h2>
+          <p class="session-end-text">Your focus time has been saved. Take a breath—you did it.</p>
+          <button type="button" class="btn btn-primary session-end-save" id="session-end-save">Save session</button>
+        </div>
+      `;
+      modal.querySelector('.session-end-backdrop').addEventListener('click', closeSessionEnd);
+      modal.querySelector('#session-end-save').addEventListener('click', closeSessionEnd);
+      function closeSessionEnd() {
+        sessionEndSound.stop();
+        reset();
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        const focusView = document.getElementById('focus-view');
+        if (focusView) renderFocusView(focusView);
+      }
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    });
+    const guideBtn = app.querySelector('#btn-guide');
     const accountBtn = app.querySelector('#btn-account');
     const logoutBtn = app.querySelector('#btn-logout');
+    if (guideBtn) guideBtn.addEventListener('click', () => {
+      const modal = document.getElementById('guide-modal');
+      if (modal) {
+        renderGuideView(modal, () => {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        });
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+    });
     if (accountBtn) accountBtn.addEventListener('click', () => {
       const modal = document.getElementById('account-modal');
       if (modal) renderAccountModal(modal, session, () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }, async () => { await signOut(); setUserId(null); setSessionsUserId(null); showAuth(); });
@@ -236,7 +280,9 @@ export async function initApp() {
   } else {
     app.innerHTML = `
       <header class="app-header">
-        <span class="header-spacer"></span>
+        <div class="header-buttons-left">
+          <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
+        </div>
         <div class="app-header-center">
           <h1 class="app-title">Habbitto</h1>
           <p class="app-subtitle">using local storage (no account)</p>
@@ -246,10 +292,49 @@ export async function initApp() {
         </div>
       </header>
       <main class="focus-view" id="focus-view"></main>
+      <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
+      <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
       <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
     `;
     const main = app.querySelector('#focus-view');
+    onSessionEndAlert(() => {
+      const modal = document.getElementById('session-end-modal');
+      if (!modal) return;
+      sessionEndSound.play();
+      modal.innerHTML = `
+        <div class="modal-backdrop session-end-backdrop"></div>
+        <div class="modal-content session-end-content">
+          <h2 class="session-end-title">Congrats! Session ended.</h2>
+          <p class="session-end-text">Your focus time has been saved. Take a breath—you did it.</p>
+          <button type="button" class="btn btn-primary session-end-save" id="session-end-save">Save session</button>
+        </div>
+      `;
+      modal.querySelector('.session-end-backdrop').addEventListener('click', closeSessionEnd);
+      modal.querySelector('#session-end-save').addEventListener('click', closeSessionEnd);
+      function closeSessionEnd() {
+        sessionEndSound.stop();
+        reset();
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        const focusView = document.getElementById('focus-view');
+        if (focusView) renderFocusView(focusView);
+      }
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    });
+    const guideBtn = app.querySelector('#btn-guide');
     const galaxyBtn = app.querySelector('#btn-galaxy');
+    if (guideBtn) guideBtn.addEventListener('click', () => {
+      const modal = document.getElementById('guide-modal');
+      if (modal) {
+        renderGuideView(modal, () => {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        });
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+    });
     const openGalaxy = () => {
       const overlay = document.getElementById('galaxy-overlay');
       if (overlay) {

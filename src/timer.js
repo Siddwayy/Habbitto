@@ -14,9 +14,14 @@ let state = {
 
 const listeners = [];
 let onWorkCompleteCallback = null;
+let onSessionEndAlertCallback = null;
 
 export function onWorkComplete(fn) {
   onWorkCompleteCallback = fn;
+}
+
+export function onSessionEndAlert(fn) {
+  onSessionEndAlertCallback = fn;
 }
 
 function notify() {
@@ -50,6 +55,11 @@ function onPhaseEnd() {
     if (onWorkCompleteCallback && state.habitId) {
       const minutes = Math.floor(state.workDuration / 60);
       onWorkCompleteCallback(state.habitId, minutes);
+    }
+    if (onSessionEndAlertCallback) {
+      try {
+        onSessionEndAlertCallback();
+      } catch (_) {}
     }
     state.phase = 'break';
     state.remainingSeconds = state.breakDuration;
