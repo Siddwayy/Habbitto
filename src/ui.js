@@ -140,14 +140,12 @@ export function renderFocusView(container) {
           </div>
         </div>
         ${!isStopwatch && state.phase === 'idle' ? (() => {
-          const lastUsed = getLastUsedDuration();
           const presetsHtml = PRESET_MINUTES.map((m) => `<button type="button" class="duration-preset-btn ${state.workDuration / 60 === m ? 'selected' : ''}" data-minutes="${m}">${m}</button>`).join('');
-          const lastBtn = lastUsed ? `<button type="button" class="duration-preset-btn duration-preset-last ${state.workDuration / 60 === lastUsed ? 'selected' : ''}" data-minutes="${lastUsed}">Last (${lastUsed})</button>` : '';
           const customBtn = `<button type="button" class="duration-preset-btn duration-preset-custom" data-custom="1">Custom</button>`;
           const msg = getDurationMessage(state.workDuration / 60);
           return `
         <div class="timer-duration-presets" id="timer-duration-presets">
-          ${presetsHtml}${lastBtn}${customBtn}
+          ${presetsHtml}${customBtn}
         </div>
         ${msg ? `<p class="timer-duration-message">${escapeHtml(msg)}</p>` : ''}
         `;

@@ -1169,6 +1169,7 @@ input:focus-visible,
 #timer-start {
   font-weight: 700;
   padding: var(--space-md) var(--space-xl);
+  width: 100%;
 }
 
 .timer-settings {
