@@ -24,6 +24,19 @@ export async function getSession() {
   return supabase.auth.getSession();
 }
 
+export async function getCurrentUser() {
+  if (!supabase) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function updatePassword(newPassword) {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+  return data;
+}
+
 export function onAuthStateChange(callback) {
   if (!supabase) return () => {};
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
