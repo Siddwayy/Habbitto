@@ -48,7 +48,7 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 
 ## Links
 
-- **Live site:** [Add your deployed URL]
+- **Live site:** [https://dancing-churros-0d7f45.netlify.app/]
 - **Source code:** This repository
 
 ---
