@@ -10,6 +10,22 @@ create table if not exists habits (
   created_at timestamptz default now()
 );
 
+-- Sessions table: one row per saved focus session (for galaxy map)
+create table if not exists sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  habit_id uuid references habits(id) on delete cascade not null,
+  date text not null,
+  focus_minutes int not null default 0,
+  created_at timestamptz default now()
+);
+
+alter table sessions enable row level security;
+create policy "Users can manage own sessions"
+  on sessions for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- Completions table (per user, per habit)
 create table if not exists completions (
   id uuid primary key default gen_random_uuid(),

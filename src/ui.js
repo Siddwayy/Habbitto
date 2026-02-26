@@ -2,6 +2,7 @@ import { renderIcon } from './icons.js';
 import {
   getHabitsList,
   getTimeSpentPerHabit,
+  getDailyTotalsLast30Days,
   addHabit,
   updateHabit,
   deleteHabit,
@@ -54,6 +55,8 @@ const DURATION_MESSAGES = {
 function getDurationMessage(workMinutes) {
   return DURATION_MESSAGES[workMinutes] || '';
 }
+
+let timeSpentFilter = 'habits'; // 'habits' | 'daily'
 
 export function renderFocusView(container) {
   const habits = getHabitsList();
@@ -142,33 +145,86 @@ export function renderFocusView(container) {
     <div id="modal-custom-habit" class="modal" aria-hidden="true"></div>
   `;
 
-  // Time spent section - show all habits with their total focus time
+  // Time spent section – tabs: Time spent (per habit) | Daily tracking (bar graph)
   const timeSpentSection = container.querySelector('#time-spent-section');
-  if (habits.length > 0) {
-    timeSpentSection.innerHTML = `
+  const dailyTotals = getDailyTotalsLast30Days();
+  const maxDailyMins = Math.max(1, ...dailyTotals.map((d) => d.totalMinutes));
+  timeSpentSection.innerHTML = `
+    <div class="time-spent-header">
       <h2 class="time-spent-label">Time spent</h2>
-      <div class="time-spent-grid" id="time-spent-grid"></div>
-    `;
-    const grid = timeSpentSection.querySelector('#time-spent-grid');
-    habits.forEach((h) => {
-      const mins = timeSpent[h.id] || 0;
-      const el = document.createElement('div');
-      el.className = 'time-spent-card';
-      el.innerHTML = `
-        <span class="time-spent-icon">${habitIconHtml(h.icon)}</span>
-        <span class="time-spent-name">${escapeHtml(h.name)}</span>
-        <span class="time-spent-value">${formatTimeSpent(mins)}</span>
-        <button type="button" class="btn btn-ghost btn-icon time-spent-delete" title="Delete habit">${habitIconHtml('trash', 16)}</button>
-      `;
-      el.querySelector('.time-spent-delete').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (confirm(`Delete "${h.name}"? This will remove the habit and its time data.`)) await deleteHabit(h.id);
+      <div class="time-spent-tabs">
+        <button type="button" class="time-spent-tab ${timeSpentFilter === 'habits' ? 'active' : ''}" data-filter="habits">Per habit</button>
+        <button type="button" class="time-spent-tab ${timeSpentFilter === 'daily' ? 'active' : ''}" data-filter="daily">Daily tracking</button>
+      </div>
+    </div>
+    <div class="time-spent-content" id="time-spent-content"></div>
+  `;
+  const contentEl = timeSpentSection.querySelector('#time-spent-content');
+  const tabs = timeSpentSection.querySelectorAll('.time-spent-tab');
+
+  function renderTimeSpentContent() {
+    if (timeSpentFilter === 'habits') {
+      if (habits.length === 0) {
+        contentEl.innerHTML = '<p class="time-spent-empty">Add habits to track time spent.</p>';
+        return;
+      }
+      contentEl.innerHTML = '<div class="time-spent-grid" id="time-spent-grid"></div>';
+      const grid = contentEl.querySelector('#time-spent-grid');
+      habits.forEach((h) => {
+        const mins = timeSpent[h.id] || 0;
+        const el = document.createElement('div');
+        el.className = 'time-spent-card';
+        el.innerHTML = `
+          <span class="time-spent-icon">${habitIconHtml(h.icon)}</span>
+          <span class="time-spent-name">${escapeHtml(h.name)}</span>
+          <span class="time-spent-value">${formatTimeSpent(mins)}</span>
+          <button type="button" class="btn btn-ghost btn-icon time-spent-delete" title="Delete habit">${habitIconHtml('trash', 16)}</button>
+        `;
+        el.querySelector('.time-spent-delete').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (confirm(`Delete "${h.name}"? This will remove the habit and its time data.`)) await deleteHabit(h.id);
+        });
+        grid.appendChild(el);
       });
-      grid.appendChild(el);
-    });
-  } else {
-    timeSpentSection.innerHTML = '';
+    } else {
+      const barMaxHeight = 90;
+      const years = [...new Set(dailyTotals.map((d) => new Date(d.date + 'T12:00:00').getFullYear()))];
+      const yearLabel = years.length > 1 ? `${years[0]} – ${years[1]}` : String(years[0]);
+      const parts = [];
+      dailyTotals.forEach((d, i) => {
+        const dt = new Date(d.date + 'T12:00:00');
+        const prevMonth = i > 0 ? new Date(dailyTotals[i - 1].date + 'T12:00:00').getMonth() : -1;
+        const isNewMonth = dt.getMonth() !== prevMonth;
+        if (isNewMonth) {
+          const monthName = dt.toLocaleDateString('en', { month: 'short' });
+          parts.push(`<div class="daily-month-divider" title="${monthName}"><span class="daily-month-label">${monthName}</span><div class="daily-month-line"></div></div>`);
+        }
+        const barHeight = maxDailyMins > 0 ? (d.totalMinutes / maxDailyMins) * barMaxHeight : 0;
+        const fullLabel = dt.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+        parts.push(`<div class="daily-bar-wrap" title="${fullLabel}: ${formatTimeSpent(d.totalMinutes)}">
+          <div class="daily-bar" style="height: ${Math.max(barHeight, d.totalMinutes > 0 ? 6 : 0)}px"></div>
+          <span class="daily-bar-label">${dt.getDate()}</span>
+        </div>`);
+      });
+      contentEl.innerHTML = `
+        <div class="daily-chart-box">
+          <p class="daily-chart-year">${yearLabel}</p>
+          <p class="daily-chart-title">Last 30 days</p>
+          <div class="daily-chart" id="daily-chart">${parts.join('')}</div>
+        </div>
+      `;
+    }
   }
+
+  renderTimeSpentContent();
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      timeSpentFilter = tab.dataset.filter;
+      tabs.forEach((t) => t.classList.toggle('active', t.dataset.filter === timeSpentFilter));
+      renderTimeSpentContent();
+    });
+  });
 
   // Habit picker (small square containers with icon)
   const habitPicker = container.querySelector('#habit-picker');

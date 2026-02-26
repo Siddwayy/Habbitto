@@ -58,9 +58,44 @@ export async function updateHabitDb(userId, id, updates) {
 
 export async function deleteHabitDb(userId, id) {
   if (!supabase || !userId) throw new Error('Not authenticated');
+  await supabase.from('sessions').delete().eq('habit_id', id).eq('user_id', userId);
   await supabase.from('completions').delete().eq('habit_id', id).eq('user_id', userId);
   const { error } = await supabase.from('habits').delete().eq('id', id).eq('user_id', userId);
   if (error) throw error;
+}
+
+export async function fetchSessions(userId) {
+  if (!supabase || !userId) return [];
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: true });
+  if (error) return []; // table may not exist yet
+  return (data || []).map(row => ({
+    id: row.id,
+    habitId: row.habit_id,
+    date: row.date,
+    focusMinutes: row.focus_minutes || 0,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function insertSession(userId, habitId, date, focusMinutes) {
+  if (!supabase || !userId) return null;
+  const { error } = await supabase
+    .from('sessions')
+    .insert({
+      user_id: userId,
+      habit_id: habitId,
+      date,
+      focus_minutes: focusMinutes,
+    });
+  if (error) {
+    console.warn('insertSession failed (table may not exist):', error.message);
+    return null;
+  }
+  return { habitId, date, focusMinutes };
 }
 
 export async function fetchCompletions(userId) {

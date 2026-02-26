@@ -1,6 +1,8 @@
 import { renderFocusView } from './ui.js';
 import { renderAuthView } from './auth-ui.js';
+import { renderGalaxyView } from './galaxy-ui.js';
 import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId } from './habits.js';
+import { loadSessions, setUserId as setSessionsUserId, subscribeSessions } from './sessions.js';
 import { subscribeTimer, onWorkComplete } from './timer.js';
 import { getSession, onAuthStateChange, signOut, updatePassword } from './auth.js';
 import { supabase } from './supabase.js';
@@ -76,46 +78,90 @@ function escapeHtml(s) {
   return div.innerHTML;
 }
 
+let midnightRefreshTimeout = null;
+
+function scheduleMidnightRefresh(main) {
+  if (midnightRefreshTimeout) clearTimeout(midnightRefreshTimeout);
+  if (!main?.isConnected) return;
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const msUntilMidnight = tomorrow - now;
+  midnightRefreshTimeout = setTimeout(() => {
+    if (main?.isConnected) renderFocusView(main);
+    if (main?.isConnected) scheduleMidnightRefresh(main);
+  }, msUntilMidnight);
+}
+
+function setupDateChangeRefresh(main) {
+  scheduleMidnightRefresh(main);
+}
+
 export async function initApp() {
   const app = document.getElementById('app');
   if (!app) return;
 
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      const el = document.getElementById('focus-view');
+      if (el) renderFocusView(el);
+    }
+  });
+
   const showMain = async (session) => {
     app.innerHTML = `
       <header class="app-header">
-        <div class="header-actions header-actions-left">
-          <button type="button" class="btn btn-account" id="btn-account">Account</button>
-        </div>
+        <button type="button" class="btn btn-account" id="btn-account">Account</button>
         <div class="app-header-center">
           <h1 class="app-title">Habbitto</h1>
-          <p class="app-subtitle">Focus</p>
         </div>
-        <div class="header-actions header-actions-right">
+        <div class="header-buttons-right">
+          <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
           <button type="button" class="btn btn-logout" id="btn-logout">Log out</button>
         </div>
       </header>
       <main class="focus-view" id="focus-view"></main>
       <div id="account-modal" class="modal account-modal" aria-hidden="true"></div>
+      <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
     `;
     const main = app.querySelector('#focus-view');
     const accountBtn = app.querySelector('#btn-account');
     const logoutBtn = app.querySelector('#btn-logout');
     if (accountBtn) accountBtn.addEventListener('click', () => {
       const modal = document.getElementById('account-modal');
-      if (modal) renderAccountModal(modal, session, () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }, async () => { await signOut(); setUserId(null); showAuth(); });
+      if (modal) renderAccountModal(modal, session, () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }, async () => { await signOut(); setUserId(null); setSessionsUserId(null); showAuth(); });
       modal?.classList.add('open');
       modal?.setAttribute('aria-hidden', 'false');
     });
     if (logoutBtn) logoutBtn.addEventListener('click', async () => {
       await signOut();
       setUserId(null);
+      setSessionsUserId(null);
       showAuth();
     });
+    const galaxyBtn = app.querySelector('#btn-galaxy');
+    const openGalaxy = () => {
+      const overlay = document.getElementById('galaxy-overlay');
+      if (overlay) {
+        renderGalaxyView(overlay, () => { overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true'); });
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+    };
+    if (galaxyBtn) galaxyBtn.addEventListener('click', openGalaxy);
+    subscribeSessions(() => {
+      const overlay = document.getElementById('galaxy-overlay');
+      if (overlay?.classList.contains('open')) openGalaxy();
+    });
     setUserId(session?.user?.id ?? null);
+    setSessionsUserId(session?.user?.id ?? null);
     onWorkComplete(addFocusToCompletion);
     await loadHabits();
+    await loadSessions();
     subscribeHabits(() => renderFocusView(main));
     subscribeTimer(() => renderFocusView(main));
+    setupDateChangeRefresh(main);
     renderFocusView(main);
   };
 
@@ -154,22 +200,47 @@ export async function initApp() {
     onAuthStateChange((session) => {
       if (!session) {
         setUserId(null);
+        setSessionsUserId(null);
         showAuth();
       }
     });
   } else {
     app.innerHTML = `
       <header class="app-header">
-        <h1 class="app-title">Habbitto</h1>
-        <p class="app-subtitle">Focus · using local storage (no account)</p>
+        <span class="header-spacer"></span>
+        <div class="app-header-center">
+          <h1 class="app-title">Habbitto</h1>
+          <p class="app-subtitle">using local storage (no account)</p>
+        </div>
+        <div class="header-buttons-right">
+          <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
+        </div>
       </header>
       <main class="focus-view" id="focus-view"></main>
+      <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
     `;
     const main = app.querySelector('#focus-view');
+    const galaxyBtn = app.querySelector('#btn-galaxy');
+    const openGalaxy = () => {
+      const overlay = document.getElementById('galaxy-overlay');
+      if (overlay) {
+        renderGalaxyView(overlay, () => { overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true'); });
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+    };
+    if (galaxyBtn) galaxyBtn.addEventListener('click', openGalaxy);
+    subscribeSessions(() => {
+      const overlay = document.getElementById('galaxy-overlay');
+      if (overlay?.classList.contains('open')) openGalaxy();
+    });
+    setSessionsUserId(null);
+    loadSessions();
     onWorkComplete(addFocusToCompletion);
     loadHabits();
     subscribeHabits(() => renderFocusView(main));
     subscribeTimer(() => renderFocusView(main));
+    setupDateChangeRefresh(main);
     renderFocusView(main);
   }
 }

@@ -1,5 +1,6 @@
 import { getHabits, setHabits, getCompletions, setCompletions } from './storage.js';
 import * as db from './storage-supabase.js';
+import { addSession } from './sessions.js';
 
 const PRESET_ICONS = [
   'book', 'dumbbell', 'heart', 'moon', 'droplet', 'graduation-cap',
@@ -179,6 +180,7 @@ export async function addFocusToCompletion(habitId, focusMinutes) {
     try {
       await db.upsertCompletion(userId, habitId, today, focusMinutes);
       completionsCache = await db.fetchCompletions(userId);
+      await addSession(habitId, today, focusMinutes);
       notify();
       return;
     } catch (err) {
@@ -198,6 +200,7 @@ export async function addFocusToCompletion(habitId, focusMinutes) {
     completions = [...completions, { habitId, date: today, focusMinutes }];
   }
   setCompletions(completions);
+  addSession(habitId, today, focusMinutes);
   notify();
 }
 
@@ -218,6 +221,24 @@ export function getTodayFocusMinutes() {
   return completions
     .filter((c) => c.date === today)
     .reduce((sum, c) => sum + (c.focusMinutes || 0), 0);
+}
+
+/** Last 30 days with total focus minutes per day. Returns [{ date, totalMinutes }, ...] */
+export function getDailyTotalsLast30Days() {
+  const completions = getCompletionsList();
+  const byDate = {};
+  completions.forEach((c) => {
+    const mins = c.focusMinutes || 0;
+    if (mins > 0) byDate[c.date] = (byDate[c.date] || 0) + mins;
+  });
+  const result = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const date = d.toISOString().slice(0, 10);
+    result.push({ date, totalMinutes: byDate[date] || 0 });
+  }
+  return result;
 }
 
 export function subscribeHabits(fn) {

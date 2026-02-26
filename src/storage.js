@@ -1,6 +1,7 @@
 const KEYS = {
   HABITS: 'habbitto_habits',
   COMPLETIONS: 'habbitto_completions',
+  SESSIONS: 'habbitto_sessions',
 };
 
 export function getItem(key, defaultValue = null) {
@@ -36,4 +37,12 @@ export function getCompletions() {
 
 export function setCompletions(completions) {
   return setItem(KEYS.COMPLETIONS, completions);
+}
+
+export function getSessions() {
+  return getItem(KEYS.SESSIONS, []);
+}
+
+export function setSessions(sessions) {
+  return setItem(KEYS.SESSIONS, sessions);
 }
