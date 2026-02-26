@@ -1,3 +1,5 @@
+import { signIn, signUp } from './auth.js';
+
 export function renderAuthView(container, onSuccess) {
   container.innerHTML = `
     <div class="auth-card">
@@ -48,7 +50,6 @@ export function renderAuthView(container, onSuccess) {
     errorEl.textContent = '';
     submitBtn.disabled = true;
     try {
-      const { signIn, signUp } = await import('./auth.js');
       if (mode === 'login') {
         await signIn(email, password);
       } else {

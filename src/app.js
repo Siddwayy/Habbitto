@@ -1,9 +1,9 @@
 import { renderFocusView } from './ui.js';
 import { renderAuthView } from './auth-ui.js';
 import { renderGalaxyView } from './galaxy-ui.js';
-import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId } from './habits.js';
+import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId, getHabitsList } from './habits.js';
 import { loadSessions, setUserId as setSessionsUserId, subscribeSessions } from './sessions.js';
-import { subscribeTimer, onWorkComplete } from './timer.js';
+import { subscribeTimer, onWorkComplete, getTimerState, startWork, startStopwatch, pause, pauseStopwatch, resume, setDurations } from './timer.js';
 import { getSession, onAuthStateChange, signOut, updatePassword } from './auth.js';
 import { supabase } from './supabase.js';
 
@@ -109,6 +109,35 @@ export async function initApp() {
     }
   });
 
+  document.addEventListener('keydown', (e) => {
+    const focusView = document.getElementById('focus-view');
+    if (!focusView || !document.body.contains(focusView)) return;
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable)) return;
+    if (document.querySelector('.modal.open')) return;
+    const state = getTimerState();
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (state.phase === 'idle' && state.habitId && getHabitsList().some((h) => h.id === state.habitId)) {
+        if (state.mode === 'stopwatch') startStopwatch();
+        else startWork();
+      } else if ((state.phase === 'work' || state.phase === 'stopwatch') && state.intervalId) {
+        if (state.phase === 'stopwatch') pauseStopwatch();
+        else pause();
+      } else if (state.phase === 'work' || state.phase === 'stopwatch-paused') {
+        resume();
+      }
+    } else if (e.code >= 'Digit1' && e.code <= 'Digit5' && state.phase === 'idle' && !state.intervalId) {
+      const presets = [30, 45, 60, 75, 90];
+      const idx = parseInt(e.code.replace('Digit', ''), 10) - 1;
+      if (presets[idx]) {
+        e.preventDefault();
+        setDurations(presets[idx], 5);
+        renderFocusView(focusView);
+      }
+    }
+  });
+
   const showMain = async (session) => {
     app.innerHTML = `
       <header class="app-header">
@@ -186,7 +215,7 @@ export async function initApp() {
       app.innerHTML = `
         <div class="auth-card" style="margin-top: 2rem;">
           <h2>Connection error</h2>
-          <p style="color: var(--danger); margin: 1rem 0;">${err?.message || 'Failed to connect to Supabase'}</p>
+          <p style="color: var(--danger); margin: 1rem 0;">${escapeHtml(err?.message || 'Failed to connect to Supabase')}</p>
           <p style="font-size: 0.9rem; color: var(--text-muted);">Check your .env (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY). Restart the dev server after changing .env.</p>
         </div>
       `;
@@ -235,9 +264,9 @@ export async function initApp() {
       if (overlay?.classList.contains('open')) openGalaxy();
     });
     setSessionsUserId(null);
-    loadSessions();
+    await loadSessions();
     onWorkComplete(addFocusToCompletion);
-    loadHabits();
+    await loadHabits();
     subscribeHabits(() => renderFocusView(main));
     subscribeTimer(() => renderFocusView(main));
     setupDateChangeRefresh(main);

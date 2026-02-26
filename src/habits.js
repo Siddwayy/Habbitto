@@ -223,6 +223,25 @@ export function getTodayFocusMinutes() {
     .reduce((sum, c) => sum + (c.focusMinutes || 0), 0);
 }
 
+/** Consecutive days (including today) the habit was completed. 0 if not completed today. */
+export function getHabitStreak(habitId) {
+  const completions = getCompletionsList();
+  const dateSet = new Set(
+    completions.filter((c) => c.habitId === habitId).map((c) => c.date)
+  );
+  const today = getTodayKey();
+  if (!dateSet.has(today)) return 0;
+  let streak = 0;
+  let d = new Date(today + 'T12:00:00Z');
+  while (true) {
+    const key = d.toISOString().slice(0, 10);
+    if (!dateSet.has(key)) break;
+    streak++;
+    d.setUTCDate(d.getUTCDate() - 1);
+  }
+  return streak;
+}
+
 /** Last 30 days with total focus minutes per day. Returns [{ date, totalMinutes }, ...] */
 export function getDailyTotalsLast30Days() {
   const completions = getCompletionsList();

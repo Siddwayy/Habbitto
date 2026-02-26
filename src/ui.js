@@ -3,6 +3,7 @@ import {
   getHabitsList,
   getTimeSpentPerHabit,
   getDailyTotalsLast30Days,
+  getHabitStreak,
   addHabit,
   updateHabit,
   deleteHabit,
@@ -44,6 +45,24 @@ function formatTimeSpent(minutes) {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+const LAST_DURATION_KEY = 'habbitto_last_duration';
+const PRESET_MINUTES = [30, 45, 60, 75, 90];
+
+function getLastUsedDuration() {
+  try {
+    const n = parseInt(localStorage.getItem(LAST_DURATION_KEY), 10);
+    return n >= 1 && n <= 180 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function setLastUsedDuration(minutes) {
+  try {
+    localStorage.setItem(LAST_DURATION_KEY, String(minutes));
+  } catch (_) {}
+}
+
 const DURATION_MESSAGES = {
   30: "Okay, I'm in for a quick session. Let's get warmed up!",
   45: "Let's go solid this time — not too long, not too short.",
@@ -58,9 +77,20 @@ function getDurationMessage(workMinutes) {
 
 let timeSpentFilter = 'habits'; // 'habits' | 'daily'
 
+const DEFAULT_TAB_TITLE = 'Habbitto';
+
 export function renderFocusView(container) {
   const habits = getHabitsList();
   const state = getTimerState();
+  if (typeof document !== 'undefined') {
+    if (state.phase === 'work' || state.phase === 'break') {
+      const m = Math.floor(state.remainingSeconds / 60);
+      const s = state.remainingSeconds % 60;
+      document.title = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} · ${DEFAULT_TAB_TITLE}`;
+    } else {
+      document.title = DEFAULT_TAB_TITLE;
+    }
+  }
   const timeSpent = getTimeSpentPerHabit();
   const isStopwatch = state.mode === 'stopwatch';
   const isStopwatchRunning = state.phase === 'stopwatch' || state.phase === 'stopwatch-paused';
@@ -109,12 +139,19 @@ export function renderFocusView(container) {
             ${showProgress && isStopwatch ? `<span class="timer-elapsed-label">${Math.floor(elapsedSeconds / 60)}m elapsed</span>` : ''}
           </div>
         </div>
-        ${!isStopwatch && state.phase === 'idle' ? `
+        ${!isStopwatch && state.phase === 'idle' ? (() => {
+          const lastUsed = getLastUsedDuration();
+          const presetsHtml = PRESET_MINUTES.map((m) => `<button type="button" class="duration-preset-btn ${state.workDuration / 60 === m ? 'selected' : ''}" data-minutes="${m}">${m}</button>`).join('');
+          const lastBtn = lastUsed ? `<button type="button" class="duration-preset-btn duration-preset-last ${state.workDuration / 60 === lastUsed ? 'selected' : ''}" data-minutes="${lastUsed}">Last (${lastUsed})</button>` : '';
+          const customBtn = `<button type="button" class="duration-preset-btn duration-preset-custom" data-custom="1">Custom</button>`;
+          const msg = getDurationMessage(state.workDuration / 60);
+          return `
         <div class="timer-duration-presets" id="timer-duration-presets">
-          ${[30, 45, 60, 75, 90].map((m) => `<button type="button" class="duration-preset-btn ${state.workDuration / 60 === m ? 'selected' : ''}" data-minutes="${m}">${m}</button>`).join('')}
+          ${presetsHtml}${lastBtn}${customBtn}
         </div>
-        ${getDurationMessage(state.workDuration / 60) ? `<p class="timer-duration-message">${escapeHtml(getDurationMessage(state.workDuration / 60))}</p>` : ''}
-        ` : ''}
+        ${msg ? `<p class="timer-duration-message">${escapeHtml(msg)}</p>` : ''}
+        `;
+        })() : ''}
         <div class="timer-controls">
           ${state.phase === 'idle' ? `<button type="button" class="btn btn-primary btn-timer" id="timer-start" ${!state.habitId || !habits.some(h => h.id === state.habitId) ? 'disabled' : ''}>Start</button>` : ''}
           ${(state.phase === 'stopwatch' || (state.phase === 'work' || state.phase === 'break') && state.intervalId) ? `<button type="button" class="btn btn-ghost btn-timer" id="timer-pause">Pause</button>` : ''}
@@ -148,7 +185,6 @@ export function renderFocusView(container) {
   // Time spent section – tabs: Time spent (per habit) | Daily tracking (bar graph)
   const timeSpentSection = container.querySelector('#time-spent-section');
   const dailyTotals = getDailyTotalsLast30Days();
-  const maxDailyMins = Math.max(1, ...dailyTotals.map((d) => d.totalMinutes));
   timeSpentSection.innerHTML = `
     <div class="time-spent-header">
       <h2 class="time-spent-label">Time spent</h2>
@@ -178,7 +214,7 @@ export function renderFocusView(container) {
           <span class="time-spent-icon">${habitIconHtml(h.icon)}</span>
           <span class="time-spent-name">${escapeHtml(h.name)}</span>
           <span class="time-spent-value">${formatTimeSpent(mins)}</span>
-          <button type="button" class="btn btn-ghost btn-icon time-spent-delete" title="Delete habit">${habitIconHtml('trash', 16)}</button>
+          <button type="button" class="btn btn-ghost btn-icon time-spent-delete" title="Delete habit">${habitIconHtml('trash', 22)}</button>
         `;
         el.querySelector('.time-spent-delete').addEventListener('click', async (e) => {
           e.stopPropagation();
@@ -187,7 +223,9 @@ export function renderFocusView(container) {
         grid.appendChild(el);
       });
     } else {
-      const barMaxHeight = 90;
+      const barAreaHeight = 55;
+      const maxHours = 6;
+      const pixelsPerHour = barAreaHeight / maxHours;
       const years = [...new Set(dailyTotals.map((d) => new Date(d.date + 'T12:00:00').getFullYear()))];
       const yearLabel = years.length > 1 ? `${years[0]} – ${years[1]}` : String(years[0]);
       const parts = [];
@@ -197,19 +235,26 @@ export function renderFocusView(container) {
         const isNewMonth = dt.getMonth() !== prevMonth;
         if (isNewMonth) {
           const monthName = dt.toLocaleDateString('en', { month: 'short' });
-          parts.push(`<div class="daily-month-divider" title="${monthName}"><span class="daily-month-label">${monthName}</span><div class="daily-month-line"></div></div>`);
+          parts.push(`<div class="daily-month-divider" title="${monthName}"><div class="daily-month-divider-inner"><span class="daily-month-label">${monthName}</span><span class="daily-month-line" aria-hidden="true"></span></div></div>`);
         }
-        const barHeight = maxDailyMins > 0 ? (d.totalMinutes / maxDailyMins) * barMaxHeight : 0;
+        const hours = d.totalMinutes / 60;
+        let barHeight = hours * pixelsPerHour;
+        if (barHeight > barAreaHeight) barHeight = barAreaHeight;
+        if (d.totalMinutes > 0 && barHeight < 4) barHeight = 4;
+        const isZero = d.totalMinutes === 0;
+        if (isZero) barHeight = 2;
         const fullLabel = dt.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
         parts.push(`<div class="daily-bar-wrap" title="${fullLabel}: ${formatTimeSpent(d.totalMinutes)}">
-          <div class="daily-bar" style="height: ${Math.max(barHeight, d.totalMinutes > 0 ? 6 : 0)}px"></div>
+          <div class="daily-bar ${isZero ? 'daily-bar-zero' : ''}" style="height: ${barHeight}px"></div>
           <span class="daily-bar-label">${dt.getDate()}</span>
         </div>`);
       });
       contentEl.innerHTML = `
         <div class="daily-chart-box">
-          <p class="daily-chart-year">${yearLabel}</p>
-          <p class="daily-chart-title">Last 30 days</p>
+          <div class="daily-chart-header">
+            <p class="daily-chart-year">${yearLabel}</p>
+            <p class="daily-chart-title">Last 30 days</p>
+          </div>
           <div class="daily-chart" id="daily-chart">${parts.join('')}</div>
         </div>
       `;
@@ -228,18 +273,30 @@ export function renderFocusView(container) {
 
   // Habit picker (small square containers with icon)
   const habitPicker = container.querySelector('#habit-picker');
-  habits.forEach((h) => {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = `habit-pick-card ${state.habitId === h.id ? 'selected' : ''}`;
-    card.dataset.habitId = h.id;
-    card.innerHTML = `
-      <span class="habit-pick-icon">${habitIconHtml(h.icon)}</span>
-      <span class="habit-pick-name">${escapeHtml(h.name)}</span>
-    `;
-    card.addEventListener('click', () => setHabit(h.id));
-    habitPicker.appendChild(card);
-  });
+  habitPicker.innerHTML = '';
+  if (habits.length === 0) {
+    const cta = document.createElement('button');
+    cta.type = 'button';
+    cta.className = 'habit-pick-card habit-pick-cta';
+    cta.innerHTML = `<span class="habit-pick-cta-text">Create your first habit</span>`;
+    cta.addEventListener('click', () => openCustomHabitModal(null));
+    habitPicker.appendChild(cta);
+  } else {
+    habits.forEach((h) => {
+      const streak = getHabitStreak(h.id);
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = `habit-pick-card ${state.habitId === h.id ? 'selected' : ''}`;
+      card.dataset.habitId = h.id;
+      card.innerHTML = `
+        <span class="habit-pick-icon">${habitIconHtml(h.icon)}</span>
+        <span class="habit-pick-name">${escapeHtml(h.name)}</span>
+        ${streak > 0 ? `<span class="habit-pick-streak" title="Current streak">${streak} day${streak !== 1 ? 's' : ''}</span>` : ''}
+      `;
+      card.addEventListener('click', () => setHabit(h.id));
+      habitPicker.appendChild(card);
+    });
+  }
 
   // Timer controls
   const startBtn = container.querySelector('#timer-start');
@@ -256,8 +313,23 @@ export function renderFocusView(container) {
   // Duration preset buttons
   container.querySelectorAll('.duration-preset-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const mins = parseInt(btn.dataset.minutes, 10);
-      setDurations(mins, 5);
+      if (btn.dataset.custom) {
+        const raw = prompt('Focus duration (minutes, 1–180):', String(Math.floor(getTimerState().workDuration / 60)));
+        if (raw == null) return;
+        const mins = parseInt(raw, 10);
+        if (Number.isNaN(mins) || mins < 1 || mins > 180) {
+          alert('Please enter a number between 1 and 180.');
+          return;
+        }
+        setDurations(mins, 5);
+        setLastUsedDuration(mins);
+      } else {
+        const mins = parseInt(btn.dataset.minutes, 10);
+        if (mins >= 1 && mins <= 180) {
+          setDurations(mins, 5);
+          setLastUsedDuration(mins);
+        }
+      }
     });
   });
 
@@ -278,6 +350,7 @@ export function renderFocusView(container) {
         window.Notification.requestPermission();
       }
     } else {
+      setLastUsedDuration(Math.floor(timerState.workDuration / 60));
       if (typeof window !== 'undefined' && window.Notification?.permission === 'default') {
         window.Notification.requestPermission();
       }
@@ -312,12 +385,14 @@ export function renderFocusView(container) {
 
   habits.forEach((habit) => {
     const done = isCompletedToday(habit.id);
+    const streak = getHabitStreak(habit.id);
     const li = document.createElement('li');
     li.className = 'habit-row';
     li.dataset.habitId = habit.id;
     li.innerHTML = `
       <span class="habit-icon">${habitIconHtml(habit.icon)}</span>
       <span class="habit-name">${escapeHtml(habit.name)}</span>
+      ${streak > 0 ? `<span class="habit-row-streak" title="Current streak">${streak} day${streak !== 1 ? 's' : ''}</span>` : ''}
       <div class="habit-actions">
         <button type="button" class="btn btn-ghost btn-icon habit-done ${done ? 'is-done' : ''}" title="Mark done today" aria-pressed="${done}">✓</button>
         <button type="button" class="btn btn-ghost btn-icon habit-edit" title="Edit">✎</button>
