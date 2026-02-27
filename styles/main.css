@@ -502,10 +502,10 @@ body::before {
 
 .app-title {
   font-family: var(--font-display);
-  font-size: 2.75rem;
+  font-size: 3.25rem;
   font-weight: 700;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.04em;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
@@ -1328,7 +1328,7 @@ input:focus-visible,
 
 /* Settings modal */
 .settings-modal-content {
-  max-width: 360px;
+  max-width: 380px;
 }
 
 .settings-modal-header {
@@ -1345,7 +1345,33 @@ input:focus-visible,
 .settings-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section-logout {
+  padding-top: var(--space-md);
+  align-items: center;
+}
+
+.settings-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 var(--space-xs);
 }
 
 .settings-group {
@@ -1376,6 +1402,134 @@ input:focus-visible,
 .settings-format .time-format-btn {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
+}
+
+/* Account section */
+.settings-account-grid {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr 2rem;
+  gap: var(--space-sm) var(--space-md);
+  align-items: center;
+}
+
+.settings-account-row-edit,
+.settings-account-row-readonly {
+  display: contents;
+}
+
+.settings-account-row-edit .settings-field-label,
+.settings-account-row-readonly .settings-field-label {
+  grid-column: 1;
+}
+
+.settings-account-row-edit .settings-field-value-wrap,
+.settings-account-row-readonly .settings-field-value {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.settings-account-row-edit .settings-account-edit-icon {
+  grid-column: 3;
+}
+
+.settings-account-row-readonly .settings-field-value {
+  grid-column: 2 / -1;
+}
+
+.settings-field-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.settings-field-value-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.settings-field-value {
+  color: var(--text);
+  font-size: 0.95rem;
+  word-break: break-all;
+}
+
+.settings-account-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.settings-account-edit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.settings-account-edit-icon:hover {
+  color: var(--accent);
+}
+
+.settings-account-input {
+  flex: 1;
+  min-width: 80px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.95rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+}
+
+.settings-account-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-message {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  align-self: flex-start;
+}
+
+.btn-logout {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.btn-logout:hover {
+  color: var(--danger);
 }
 
 /* Session end modal */
@@ -2421,7 +2575,7 @@ input:focus-visible,
   }
 
   .app-title {
-    font-size: 2.25rem;
+    font-size: 2.75rem;
   }
 
   .welcome-bar {

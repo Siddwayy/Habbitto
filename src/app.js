@@ -6,113 +6,11 @@ import { renderSettingsView } from './settings-ui.js';
 import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId, getHabitsList } from './habits.js';
 import { loadSessions, setUserId as setSessionsUserId, subscribeSessions } from './sessions.js';
 import { subscribeTimer, onWorkComplete, onSessionEndAlert, getTimerState, startWork, startStopwatch, pause, pauseStopwatch, resume, setDurations, reset } from './timer.js';
-import { getSession, onAuthStateChange, signOut, updatePassword, updateUserProfile } from './auth.js';
+import { getSession, onAuthStateChange, signOut } from './auth.js';
 import { supabase } from './supabase.js';
 import * as sessionEndSound from './session-end-sound.js';
 import { initTheme, toggleTheme, getTheme } from './theme.js';
 import { renderIcon, renderLogo } from './icons.js';
-
-const editIcon = () => renderIcon('pen', 18);
-
-function renderAccountModal(container, session, onClose, onLogout, opts = {}) {
-  const user = session?.user;
-  const email = user?.email ?? '—';
-  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
-  const nickname = user?.user_metadata?.nickname || '';
-  const userId = user?.id ?? '—';
-  container.innerHTML = `
-    <div class="modal-backdrop account-modal-backdrop"></div>
-    <div class="modal-content account-modal-content">
-      <div class="account-modal-header">
-        <h2 class="modal-title">Account</h2>
-        <button type="button" class="btn btn-ghost btn-icon btn-close-account" aria-label="Close">×</button>
-      </div>
-      <form id="account-profile-form" class="account-form account-profile-top">
-        <div class="account-field-edit">
-          <span class="account-edit-marker" aria-hidden="true">${editIcon()}</span>
-          <label for="account-full-name">Full name</label>
-          <input type="text" id="account-full-name" placeholder="Your full name" autocomplete="name" value="${escapeHtml(fullName)}" />
-        </div>
-        <div class="account-field-edit">
-          <span class="account-edit-marker" aria-hidden="true">${editIcon()}</span>
-          <label for="account-nickname">Nickname</label>
-          <input type="text" id="account-nickname" placeholder="How we can call you" autocomplete="nickname" value="${escapeHtml(nickname)}" />
-        </div>
-        <p id="account-profile-message" class="auth-error" style="display:${opts.profileSaved ? 'block' : 'none'}">${opts.profileSaved ? 'Profile saved.' : ''}</p>
-        <button type="submit" class="btn btn-primary">Save profile</button>
-      </form>
-      <div class="account-info">
-        <div class="account-field">
-          <span class="account-label">Email</span>
-          <span class="account-value">${escapeHtml(email)}</span>
-        </div>
-        <div class="account-field">
-          <span class="account-label">User ID</span>
-          <span class="account-value account-value-id">${escapeHtml(userId)}</span>
-        </div>
-      </div>
-      <form id="account-change-password" class="account-form">
-        <label for="account-new-password">New password</label>
-        <input type="password" id="account-new-password" minlength="6" placeholder="••••••••" autocomplete="new-password" />
-        <p id="account-password-message" class="auth-error" style="display:none"></p>
-        <button type="submit" class="btn btn-primary">Change password</button>
-      </form>
-      <div class="account-actions">
-        <button type="button" class="btn btn-ghost btn-logout-inline" id="account-logout">Log out</button>
-      </div>
-    </div>
-  `;
-  container.querySelector('.account-modal-backdrop').addEventListener('click', onClose);
-  container.querySelector('.btn-close-account').addEventListener('click', onClose);
-  container.querySelector('#account-logout').addEventListener('click', onLogout);
-
-  const profileForm = container.querySelector('#account-profile-form');
-  const profileMessage = container.querySelector('#account-profile-message');
-  profileForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fullNameVal = profileForm.querySelector('#account-full-name').value.trim();
-    const nicknameVal = profileForm.querySelector('#account-nickname').value.trim();
-    profileMessage.style.display = 'none';
-    try {
-      const { user: updatedUser } = await updateUserProfile(fullNameVal || null, nicknameVal || null);
-      const freshSession = { ...session, user: updatedUser };
-      renderAccountModal(container, freshSession, onClose, onLogout, { profileSaved: true });
-      const msg = container.querySelector('#account-profile-message');
-      if (msg) {
-        msg.textContent = 'Profile saved.';
-        msg.style.color = 'var(--success)';
-      }
-    } catch (err) {
-      profileMessage.textContent = err.message || 'Failed to save profile';
-      profileMessage.style.color = '';
-      profileMessage.style.display = 'block';
-    }
-  });
-
-  const form = container.querySelector('#account-change-password');
-  const messageEl = container.querySelector('#account-password-message');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const newPassword = form.querySelector('#account-new-password').value;
-    if (!newPassword || newPassword.length < 6) {
-      messageEl.textContent = 'Password must be at least 6 characters';
-      messageEl.style.display = 'block';
-      return;
-    }
-    messageEl.style.display = 'none';
-    try {
-      await updatePassword(newPassword);
-      messageEl.textContent = 'Password updated.';
-      messageEl.style.color = 'var(--success)';
-      messageEl.style.display = 'block';
-      form.querySelector('#account-new-password').value = '';
-    } catch (err) {
-      messageEl.textContent = err.message || 'Failed to update password';
-      messageEl.style.color = '';
-      messageEl.style.display = 'block';
-    }
-  });
-}
 
 function escapeHtml(s) {
   const div = document.createElement('div');
@@ -191,21 +89,18 @@ export async function initApp() {
         </div>
         <header class="app-header">
           <div class="header-buttons-left">
-            <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
-            <button type="button" class="btn btn-settings" id="btn-settings">Settings</button>
             <button type="button" class="btn btn-account" id="btn-account">Account</button>
           </div>
           <div class="header-buttons-right">
-            <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
+            <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
             <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
-            <button type="button" class="btn btn-logout" id="btn-logout">Log out</button>
+            <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
           </div>
         </header>
       </div>
       <main class="focus-view" id="focus-view"></main>
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
       <div id="settings-modal" class="modal settings-modal" aria-hidden="true"></div>
-      <div id="account-modal" class="modal account-modal" aria-hidden="true"></div>
       <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
       <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
     `;
@@ -236,9 +131,7 @@ export async function initApp() {
       modal.setAttribute('aria-hidden', 'false');
     });
     const guideBtn = app.querySelector('#btn-guide');
-    const settingsBtn = app.querySelector('#btn-settings');
     const accountBtn = app.querySelector('#btn-account');
-    const logoutBtn = app.querySelector('#btn-logout');
     if (guideBtn) guideBtn.addEventListener('click', () => {
       const modal = document.getElementById('guide-modal');
       if (modal) {
@@ -250,32 +143,24 @@ export async function initApp() {
         modal.setAttribute('aria-hidden', 'false');
       }
     });
-    if (settingsBtn) settingsBtn.addEventListener('click', () => {
+    const openSettings = async () => {
       const modal = document.getElementById('settings-modal');
       if (modal) {
+        const { data } = await getSession();
         renderSettingsView(modal, () => {
           modal.classList.remove('open');
           modal.setAttribute('aria-hidden', 'true');
-        }, () => renderFocusView(main));
+        }, () => renderFocusView(main), data?.session ?? session, async () => {
+          await signOut();
+          setUserId(null);
+          setSessionsUserId(null);
+          showAuth();
+        });
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
       }
-    });
-    if (accountBtn) accountBtn.addEventListener('click', async () => {
-      const modal = document.getElementById('account-modal');
-      if (modal) {
-        const { data } = await getSession();
-        renderAccountModal(modal, data?.session ?? session, () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }, async () => { await signOut(); setUserId(null); setSessionsUserId(null); showAuth(); });
-        modal.classList.add('open');
-        modal.setAttribute('aria-hidden', 'false');
-      }
-    });
-    if (logoutBtn) logoutBtn.addEventListener('click', async () => {
-      await signOut();
-      setUserId(null);
-      setSessionsUserId(null);
-      showAuth();
-    });
+    };
+    if (accountBtn) accountBtn.addEventListener('click', openSettings);
     const galaxyBtn = app.querySelector('#btn-galaxy');
     const openGalaxy = () => {
       const overlay = document.getElementById('galaxy-overlay');
@@ -373,12 +258,12 @@ export async function initApp() {
         </div>
         <header class="app-header">
           <div class="header-buttons-left">
-            <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
             <button type="button" class="btn btn-settings" id="btn-settings">Settings</button>
           </div>
           <div class="header-buttons-right">
-            <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
+            <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
             <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
+            <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
           </div>
         </header>
       </div>
