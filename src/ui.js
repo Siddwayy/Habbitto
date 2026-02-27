@@ -8,7 +8,6 @@ import {
   updateHabit,
   deleteHabit,
   isCompletedToday,
-  toggleCompletionToday,
   addFocusToCompletion,
   getPresetIcons,
 } from './habits.js';
@@ -45,6 +44,12 @@ function formatTimeSpent(minutes) {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+function formatTimeSpentHours(minutes) {
+  if (!minutes || minutes === 0) return '0h';
+  const h = minutes / 60;
+  return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`;
+}
+
 const LAST_DURATION_KEY = 'habbitto_last_duration';
 const PRESET_MINUTES = [30, 45, 60, 75, 90];
 
@@ -75,9 +80,116 @@ function getDurationMessage(workMinutes) {
   return DURATION_MESSAGES[workMinutes] || '';
 }
 
+function isPaused(state) {
+  return state.phase === 'stopwatch-paused' || ((state.phase === 'work' || state.phase === 'break') && !state.intervalId && state.remainingSeconds > 0);
+}
+
+function showSaveBtn(state) {
+  return state.phase === 'work' || ((state.phase === 'stopwatch' || state.phase === 'stopwatch-paused') && state.stopwatchSeconds > 0);
+}
+
 let timeSpentFilter = 'habits'; // 'habits' | 'daily'
 
 const DEFAULT_TAB_TITLE = 'Habbitto';
+const CIRCUMFERENCE = 2 * Math.PI * 54;
+
+/** Lightweight update of timer display only – avoids full re-render flash. */
+export function updateTimerDisplay(container) {
+  const state = getTimerState();
+  const habits = getHabitsList();
+  if (typeof document !== 'undefined') {
+    if (state.phase === 'work' || state.phase === 'break') {
+      const m = Math.floor(state.remainingSeconds / 60);
+      const s = state.remainingSeconds % 60;
+      document.title = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} · ${DEFAULT_TAB_TITLE}`;
+    } else if (state.phase === 'stopwatch' || state.phase === 'stopwatch-paused') {
+      const total = state.stopwatchSeconds;
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      document.title = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} · ${DEFAULT_TAB_TITLE}`;
+    } else {
+      document.title = DEFAULT_TAB_TITLE;
+    }
+  }
+  const isStopwatch = state.mode === 'stopwatch';
+  const isStopwatchRunning = state.phase === 'stopwatch' || state.phase === 'stopwatch-paused';
+  const displaySeconds = isStopwatch
+    ? (isStopwatchRunning ? state.stopwatchSeconds : 0)
+    : (state.phase === 'idle' ? state.workDuration : state.remainingSeconds);
+  const showProgress = state.phase === 'work' || state.phase === 'break' || isStopwatchRunning;
+  let totalSeconds = 0, elapsedSeconds = 0;
+  if (state.phase === 'work') {
+    totalSeconds = state.workDuration;
+    elapsedSeconds = state.workDuration - state.remainingSeconds;
+  } else if (state.phase === 'break') {
+    totalSeconds = state.breakDuration;
+    elapsedSeconds = state.breakDuration - state.remainingSeconds;
+  } else if (isStopwatchRunning) {
+    totalSeconds = 60 * 60;
+    elapsedSeconds = state.stopwatchSeconds % totalSeconds;
+  }
+  const progress = totalSeconds > 0 ? elapsedSeconds / totalSeconds : 0;
+  const strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+
+  const displayEl = container.querySelector('#timer-display');
+  if (displayEl) displayEl.textContent = formatSeconds(displaySeconds);
+  const remainingLabel = container.querySelector('.timer-remaining-label');
+  if (remainingLabel) remainingLabel.textContent = `${Math.floor(state.remainingSeconds / 60)}:${String(state.remainingSeconds % 60).padStart(2, '0')} left`;
+  const elapsedLabel = container.querySelector('.timer-elapsed-label');
+  if (elapsedLabel) elapsedLabel.textContent = `${Math.floor(elapsedSeconds / 60)}m elapsed`;
+  const progressCircle = container.querySelector('.timer-ring-progress');
+  if (progressCircle) progressCircle.setAttribute('stroke-dashoffset', showProgress ? strokeDashoffset : CIRCUMFERENCE);
+
+  // Timer control buttons & phase label – update when work/break/stopwatch (avoids full re-render on pause/resume)
+  if (state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch' || state.phase === 'stopwatch-paused') {
+    const pauseResumeBtn = container.querySelector('#timer-pause-resume');
+    const saveBtn = container.querySelector('#timer-save');
+    if (pauseResumeBtn) {
+      pauseResumeBtn.textContent = isPaused(state) ? 'Resume' : 'Pause';
+      pauseResumeBtn.className = `btn btn-timer ${isPaused(state) ? 'btn-timer-resume' : 'btn-timer-pause'}`;
+    }
+    if (saveBtn) saveBtn.hidden = !showSaveBtn(state);
+    const phaseEl = container.querySelector('.timer-phase');
+    if (phaseEl) {
+      const label = isStopwatch
+        ? (state.phase === 'stopwatch' ? 'Running' : 'Paused')
+        : ((state.phase === 'work' || state.phase === 'break') && !state.intervalId ? 'Paused' : state.phase === 'work' ? 'Focus' : 'Break');
+      phaseEl.textContent = label;
+    }
+  }
+
+  // Idle-only updates (duration, presets, message, habit picker, Start button) – no full re-render
+  if (state.phase === 'idle' && !isStopwatch) {
+    const workMins = state.workDuration / 60;
+    const presetBtns = container.querySelectorAll('.duration-preset-btn');
+    presetBtns.forEach((btn) => {
+      if (btn.dataset.custom) {
+        btn.classList.toggle('selected', !PRESET_MINUTES.includes(workMins));
+      } else {
+        const m = parseInt(btn.dataset.minutes, 10);
+        btn.classList.toggle('selected', workMins === m);
+      }
+    });
+    const msgEl = container.querySelector('.timer-duration-message');
+    const msg = getDurationMessage(workMins);
+    if (msgEl) {
+      if (msg) {
+        msgEl.textContent = msg;
+        msgEl.style.display = '';
+      } else {
+        msgEl.style.display = 'none';
+      }
+    }
+    const habitCards = container.querySelectorAll('.habit-pick-card:not(.habit-pick-cta)');
+    habitCards.forEach((card) => {
+      card.classList.toggle('selected', card.dataset.habitId === state.habitId);
+    });
+    const startBtn = container.querySelector('#timer-start');
+    if (startBtn) {
+      startBtn.disabled = !state.habitId || !habits.some((h) => h.id === state.habitId);
+    }
+  }
+}
 
 export function renderFocusView(container) {
   const habits = getHabitsList();
@@ -121,12 +233,20 @@ export function renderFocusView(container) {
   const strokeDashoffset = circumference * (1 - progress);
   const phaseLabel = isStopwatch
     ? (state.phase === 'stopwatch' ? 'Running' : state.phase === 'stopwatch-paused' ? 'Paused' : 'Ready')
-    : (state.phase === 'work' ? 'Focus' : state.phase === 'break' ? 'Break' : 'Ready');
+    : (state.phase === 'work' || state.phase === 'break')
+      ? ((state.phase === 'work' || state.phase === 'break') && !state.intervalId ? 'Paused' : state.phase === 'work' ? 'Focus' : 'Break')
+      : 'Ready';
   const timerCardClass = state.phase !== 'idle' && state.phase !== 'stopwatch-paused' ? 'timer-card running' : 'timer-card';
+  const habitsDone = habits.filter((h) => isCompletedToday(h.id)).length;
+  const habitsTotal = habits.length;
+  const habitsProgress = habitsTotal > 0 ? `${habitsDone} of ${habitsTotal} done` : '';
+
   container.innerHTML = `
-    <section class="time-spent-section" id="time-spent-section"></section>
     <section class="timer-section">
+      <div class="time-spent-section" id="time-spent-section"></div>
       <div class="${timerCardClass}">
+        <h2 class="timer-card-title">Focus Timer</h2>
+        <p class="timer-card-subtitle">Stay Focused</p>
         <div class="timer-mode-selector" id="timer-mode-selector">
           <button type="button" class="mode-btn ${!isStopwatch ? 'active' : ''}" data-mode="focus">Focus timer</button>
           <button type="button" class="mode-btn ${isStopwatch ? 'active' : ''}" data-mode="stopwatch">Stopwatch</button>
@@ -156,19 +276,22 @@ export function renderFocusView(container) {
         `;
         })() : ''}
         <div class="timer-controls">
-          ${state.phase === 'idle' ? `<button type="button" class="btn btn-primary btn-timer" id="timer-start" ${!state.habitId || !habits.some(h => h.id === state.habitId) ? 'disabled' : ''}>Start</button>` : ''}
-          ${(state.phase === 'stopwatch' || (state.phase === 'work' || state.phase === 'break') && state.intervalId) ? `<button type="button" class="btn btn-ghost btn-timer" id="timer-pause">Pause</button>` : ''}
-          ${(state.phase === 'stopwatch-paused' || ((state.phase === 'work' || state.phase === 'break') && !state.intervalId && state.remainingSeconds > 0)) ? `<button type="button" class="btn btn-primary btn-timer" id="timer-resume">Resume</button>` : ''}
-          ${state.phase !== 'idle' ? `<button type="button" class="btn btn-ghost btn-timer" id="timer-reset">Reset</button>` : ''}
-          ${state.phase === 'work' || ((state.phase === 'stopwatch' || state.phase === 'stopwatch-paused') && state.stopwatchSeconds > 0) ? `<button type="button" class="btn btn-primary btn-timer" id="timer-save">Save</button>` : ''}
+          ${state.phase === 'idle' ? `<button type="button" class="btn btn-primary btn-timer" id="timer-start" ${!state.habitId || !habits.some(h => h.id === state.habitId) ? 'disabled' : ''}>Start</button>` : `
+          <button type="button" class="btn btn-timer ${isPaused(state) ? 'btn-timer-resume' : 'btn-timer-pause'}" id="timer-pause-resume">${isPaused(state) ? 'Resume' : 'Pause'}</button>
+          <button type="button" class="btn btn-ghost btn-timer" id="timer-reset">Reset</button>
+          <button type="button" class="btn btn-primary btn-timer" id="timer-save" ${!showSaveBtn(state) ? 'hidden' : ''}>Save</button>
+          `}
+        </div>
+        <div class="timer-habit-area">
+          <p class="timer-habit-label">Select habit</p>
+          <div class="habit-picker" id="habit-picker"></div>
         </div>
       </div>
-      <div class="timer-settings">
-        <p class="timer-habit-label">Which habit?</p>
-        <div class="habit-picker" id="habit-picker"></div>
-        <p class="timer-hint">Enter time, select habit, then Start. Add habits below.</p>
-      </div>
     </section>
+    <footer class="main-footer">
+      <span class="main-footer-title">Today's Habits</span>
+      <span class="main-footer-progress">${escapeHtml(habitsProgress || 'Add habits below')}</span>
+    </footer>
     <section class="collapsible habits-collapsible" id="habits-collapsible">
       <button type="button" class="collapsible-trigger" id="collapsible-trigger" aria-expanded="false">
         <span class="collapsible-title">Habits</span>
@@ -207,31 +330,43 @@ export function renderFocusView(container) {
         contentEl.innerHTML = '<p class="time-spent-empty">Add habits to track time spent.</p>';
         return;
       }
+      const STREAK_SEGMENTS = 30;
+      const RING_R = 28;
+      const CIRCUMFERENCE = 2 * Math.PI * RING_R;
+      const SEG_LEN = CIRCUMFERENCE / STREAK_SEGMENTS;
+      const DASH = SEG_LEN * 0.72;
+      const GAP = SEG_LEN * 0.28;
       const cards = habits.map((h) => {
         const mins = timeSpent[h.id] || 0;
-        const streak = getHabitStreak(h.id);
-        const streakText = streak > 0 ? `${streak}d` : '—';
+        const streakRaw = getHabitStreak(h.id);
+        const streak = Math.min(streakRaw, STREAK_SEGMENTS);
+        const dashOffset = CIRCUMFERENCE - streak * SEG_LEN;
+        const streakLabel = streakRaw > 0 ? `<span class="time-spent-streak-edge" title="${streakRaw} day streak">${streakRaw}</span>` : '';
         return `
           <div class="time-spent-card" data-habit-id="${escapeHtml(h.id)}">
-            <span class="time-spent-icon">${habitIconHtml(h.icon)}</span>
+            <div class="time-spent-circle-wrap">
+              <svg class="time-spent-streak-ring" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="time-spent-ring-bg" cx="50" cy="50" r="${RING_R}" fill="none" stroke-width="6"
+                  stroke-dasharray="${DASH} ${GAP}" />
+                <circle class="time-spent-ring-fill" cx="50" cy="50" r="${RING_R}" fill="none" stroke-width="6"
+                  stroke-dasharray="${DASH} ${GAP}" stroke-dashoffset="${dashOffset}" />
+              </svg>
+              <div class="time-spent-inner">
+                <span class="time-spent-hours">${escapeHtml(formatTimeSpentHours(mins))}</span>
+              </div>
+              ${streakLabel}
+            </div>
             <span class="time-spent-name">${escapeHtml(h.name)}</span>
-            <span class="time-spent-meta">${formatTimeSpent(mins)} · ${escapeHtml(streakText)}</span>
-            <button type="button" class="btn btn-ghost btn-icon time-spent-delete" title="Delete habit">${habitIconHtml('trash', 22)}</button>
           </div>
         `;
       }).join('');
-      contentEl.innerHTML = `<div class="time-spent-grid-scroll"><div class="time-spent-grid">${cards}</div></div>`;
-      contentEl.querySelectorAll('.time-spent-delete').forEach((btn) => {
-        const card = btn.closest('.time-spent-card');
-        const habitId = card?.dataset.habitId;
-        const habit = habits.find((h) => h.id === habitId);
-        if (habit) {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            if (confirm(`Delete "${habit.name}"? This will remove the habit and its time data.`)) await deleteHabit(habit.id);
-          });
-        }
-      });
+      contentEl.innerHTML = `
+        <div class="time-spent-circles-container">
+          <div class="time-spent-grid-scroll">
+            <div class="time-spent-grid">${cards}</div>
+          </div>
+        </div>
+      `;
     } else {
       const barAreaHeight = 55;
       const maxHours = 6;
@@ -310,8 +445,7 @@ export function renderFocusView(container) {
 
   // Timer controls
   const startBtn = container.querySelector('#timer-start');
-  const pauseBtn = container.querySelector('#timer-pause');
-  const resumeBtn = container.querySelector('#timer-resume');
+  const pauseResumeBtn = container.querySelector('#timer-pause-resume');
   const resetBtn = container.querySelector('#timer-reset');
   const saveBtn = container.querySelector('#timer-save');
 
@@ -367,12 +501,15 @@ export function renderFocusView(container) {
       startWork();
     }
   });
-  if (pauseBtn) pauseBtn.addEventListener('click', () => {
+  if (pauseResumeBtn) pauseResumeBtn.addEventListener('click', () => {
     const s = getTimerState();
-    if (s.phase === 'stopwatch') pauseStopwatch();
-    else pause();
+    if (isPaused(s)) {
+      resume();
+    } else {
+      if (s.phase === 'stopwatch') pauseStopwatch();
+      else pause();
+    }
   });
-  if (resumeBtn) resumeBtn.addEventListener('click', resume);
   if (resetBtn) resetBtn.addEventListener('click', () => reset());
 
   // Collapsible
@@ -394,7 +531,6 @@ export function renderFocusView(container) {
   }
 
   habits.forEach((habit) => {
-    const done = isCompletedToday(habit.id);
     const streak = getHabitStreak(habit.id);
     const li = document.createElement('li');
     li.className = 'habit-row';
@@ -404,15 +540,10 @@ export function renderFocusView(container) {
       <span class="habit-name">${escapeHtml(habit.name)}</span>
       ${streak > 0 ? `<span class="habit-row-streak" title="Current streak">${streak} day${streak !== 1 ? 's' : ''}</span>` : ''}
       <div class="habit-actions">
-        <button type="button" class="btn btn-ghost btn-icon habit-done ${done ? 'is-done' : ''}" title="Mark done today" aria-pressed="${done}">✓</button>
         <button type="button" class="btn btn-ghost btn-icon habit-edit" title="Edit">✎</button>
         <button type="button" class="btn btn-ghost btn-icon btn-danger habit-delete" title="Delete">🗑</button>
       </div>
     `;
-    li.querySelector('.habit-done').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await toggleCompletionToday(habit.id);
-    });
     li.querySelector('.habit-edit').addEventListener('click', (e) => {
       e.stopPropagation();
       openCustomHabitModal(habit);

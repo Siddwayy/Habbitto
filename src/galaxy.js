@@ -68,19 +68,27 @@ export function computeConstellationLines(stars, maxDistance = 18, minStars = 5)
   return lines;
 }
 
+/** Format Date to YYYY-MM-DD in local time. */
+function toDateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 /** Consecutive days with at least one session */
 export function computeStreak(sessions) {
   if (sessions.length === 0) return 0;
   const dates = [...new Set(sessions.map((s) => s.date))].sort().reverse();
   let streak = 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toDateKey(new Date());
   let check = today;
   for (const d of dates) {
     if (d !== check) break;
     streak++;
-    const next = new Date(check);
+    const next = new Date(check + 'T12:00:00');
     next.setDate(next.getDate() - 1);
-    check = next.toISOString().slice(0, 10);
+    check = toDateKey(next);
   }
   return streak;
 }

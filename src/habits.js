@@ -38,8 +38,12 @@ export function setUserId(id) {
 export async function loadHabits() {
   if (userId) {
     try {
-      habitsCache = await db.fetchHabits(userId);
-      completionsCache = await db.fetchCompletions(userId);
+      const [habits, completions] = await Promise.all([
+        db.fetchHabits(userId),
+        db.fetchCompletions(userId),
+      ]);
+      habitsCache = habits;
+      completionsCache = completions;
     } catch (err) {
       console.error('Failed to load habits:', err);
     }
@@ -136,18 +140,32 @@ export async function deleteHabit(id) {
   }
 }
 
+/** Local date as YYYY-MM-DD (avoids UTC midnight timezone issues). */
 export function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Format a Date to YYYY-MM-DD in local time. */
+function toDateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function getCompletionsList() {
   return userId ? completionsCache : getCompletions();
 }
 
+/** True if habit has saved focus time today (session-based, no manual mark). */
 export function isCompletedToday(habitId) {
   const today = getTodayKey();
   const completions = getCompletionsList();
-  return completions.some((c) => c.habitId === habitId && c.date === today);
+  return completions.some((c) => c.habitId === habitId && c.date === today && (c.focusMinutes || 0) > 0);
 }
 
 export async function toggleCompletionToday(habitId, focusMinutes = null) {
@@ -223,21 +241,27 @@ export function getTodayFocusMinutes() {
     .reduce((sum, c) => sum + (c.focusMinutes || 0), 0);
 }
 
-/** Consecutive days (including today) the habit was completed. 0 if not completed today. */
+/** Consecutive days (including today) the habit was completed with 30+ focus minutes. 0 if not completed today. */
 export function getHabitStreak(habitId) {
   const completions = getCompletionsList();
-  const dateSet = new Set(
-    completions.filter((c) => c.habitId === habitId).map((c) => c.date)
-  );
   const today = getTodayKey();
+
+  // Build set of dates that count – only days with 30+ focus minutes for this habit
+  const dateSet = new Set(
+    completions
+      .filter((c) => c.habitId === habitId && (c.focusMinutes || 0) >= 30)
+      .map((c) => c.date)
+  );
+
   if (!dateSet.has(today)) return 0;
   let streak = 0;
-  let d = new Date(today + 'T12:00:00Z');
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
   while (true) {
-    const key = d.toISOString().slice(0, 10);
+    const key = toDateKey(d);
     if (!dateSet.has(key)) break;
     streak++;
-    d.setUTCDate(d.getUTCDate() - 1);
+    d.setDate(d.getDate() - 1);
   }
   return streak;
 }
@@ -254,7 +278,7 @@ export function getDailyTotalsLast30Days() {
   for (let i = 29; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const date = d.toISOString().slice(0, 10);
+    const date = toDateKey(d);
     result.push({ date, totalMinutes: byDate[date] || 0 });
   }
   return result;

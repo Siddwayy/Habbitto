@@ -1,4 +1,4 @@
-import { renderFocusView } from './ui.js';
+import { renderFocusView, updateTimerDisplay } from './ui.js';
 import { renderAuthView } from './auth-ui.js';
 import { renderGalaxyView } from './galaxy-ui.js';
 import { renderGuideView } from './guide-ui.js';
@@ -8,6 +8,8 @@ import { subscribeTimer, onWorkComplete, onSessionEndAlert, getTimerState, start
 import { getSession, onAuthStateChange, signOut, updatePassword } from './auth.js';
 import { supabase } from './supabase.js';
 import * as sessionEndSound from './session-end-sound.js';
+import { initTheme, toggleTheme, getTheme } from './theme.js';
+import { renderIcon, renderLogo } from './icons.js';
 
 function renderAccountModal(container, session, onClose, onLogout) {
   const user = session?.user;
@@ -104,6 +106,8 @@ export async function initApp() {
   const app = document.getElementById('app');
   if (!app) return;
 
+  initTheme();
+
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       const el = document.getElementById('focus-view');
@@ -143,13 +147,17 @@ export async function initApp() {
   const showMain = async (session) => {
     app.innerHTML = `
       <div class="app-header-wrap">
-        <h1 class="app-title">Habbitto</h1>
+        <div class="app-title-row">
+          <span class="app-logo">${renderLogo(36)}</span>
+          <h1 class="app-title">Habbitto</h1>
+        </div>
         <header class="app-header">
           <div class="header-buttons-left">
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
             <button type="button" class="btn btn-account" id="btn-account">Account</button>
           </div>
           <div class="header-buttons-right">
+            <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
             <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
             <button type="button" class="btn btn-logout" id="btn-logout">Log out</button>
           </div>
@@ -223,6 +231,11 @@ export async function initApp() {
       }
     };
     if (galaxyBtn) galaxyBtn.addEventListener('click', openGalaxy);
+    const themeBtn = app.querySelector('#btn-theme');
+    if (themeBtn) themeBtn.addEventListener('click', () => {
+      toggleTheme();
+      themeBtn.innerHTML = renderIcon(getTheme() === 'light' ? 'moon' : 'sun');
+    });
     subscribeSessions(() => {
       const overlay = document.getElementById('galaxy-overlay');
       if (overlay?.classList.contains('open')) openGalaxy();
@@ -230,17 +243,25 @@ export async function initApp() {
     setUserId(session?.user?.id ?? null);
     setSessionsUserId(session?.user?.id ?? null);
     onWorkComplete(addFocusToCompletion);
-    await loadHabits();
-    await loadSessions();
+    await Promise.all([loadHabits(), loadSessions()]);
     subscribeHabits(() => renderFocusView(main));
-    let lastTimerRender = 0;
+    let lastPhase, lastMode;
     subscribeTimer((state) => {
       if (document.getElementById('modal-custom-habit')?.classList.contains('open')) return;
-      const now = Date.now();
       const isTicking = state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch';
-      if (isTicking && now - lastTimerRender < 900) return;
-      lastTimerRender = now;
-      renderFocusView(main);
+      if (isTicking) {
+        if (lastPhase === 'idle') {
+          renderFocusView(main);
+        } else {
+          updateTimerDisplay(main);
+        }
+      } else if (state.phase === 'idle' && lastPhase === 'idle' && lastMode === state.mode) {
+        updateTimerDisplay(main);
+      } else {
+        renderFocusView(main);
+      }
+      lastPhase = state.phase;
+      lastMode = state.mode;
     });
     setupDateChangeRefresh(main);
     renderFocusView(main);
@@ -289,7 +310,10 @@ export async function initApp() {
     app.innerHTML = `
       <div class="app-header-wrap">
         <div class="app-title-block">
-          <h1 class="app-title">Habbitto</h1>
+          <div class="app-title-row">
+            <span class="app-logo">${renderLogo(36)}</span>
+            <h1 class="app-title">Habbitto</h1>
+          </div>
           <p class="app-subtitle">using local storage (no account)</p>
         </div>
         <header class="app-header">
@@ -297,6 +321,7 @@ export async function initApp() {
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
           </div>
           <div class="header-buttons-right">
+            <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
             <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
           </div>
         </header>
@@ -354,23 +379,36 @@ export async function initApp() {
       }
     };
     if (galaxyBtn) galaxyBtn.addEventListener('click', openGalaxy);
+    const themeBtn = app.querySelector('#btn-theme');
+    if (themeBtn) themeBtn.addEventListener('click', () => {
+      toggleTheme();
+      themeBtn.innerHTML = renderIcon(getTheme() === 'light' ? 'moon' : 'sun');
+    });
     subscribeSessions(() => {
       const overlay = document.getElementById('galaxy-overlay');
       if (overlay?.classList.contains('open')) openGalaxy();
     });
     setSessionsUserId(null);
-    await loadSessions();
     onWorkComplete(addFocusToCompletion);
-    await loadHabits();
+    await Promise.all([loadHabits(), loadSessions()]);
     subscribeHabits(() => renderFocusView(main));
-    let lastTimerRender = 0;
+    let lastPhase, lastMode;
     subscribeTimer((state) => {
       if (document.getElementById('modal-custom-habit')?.classList.contains('open')) return;
-      const now = Date.now();
       const isTicking = state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch';
-      if (isTicking && now - lastTimerRender < 900) return;
-      lastTimerRender = now;
-      renderFocusView(main);
+      if (isTicking) {
+        if (lastPhase === 'idle') {
+          renderFocusView(main);
+        } else {
+          updateTimerDisplay(main);
+        }
+      } else if (state.phase === 'idle' && lastPhase === 'idle' && lastMode === state.mode) {
+        updateTimerDisplay(main);
+      } else {
+        renderFocusView(main);
+      }
+      lastPhase = state.phase;
+      lastMode = state.mode;
     });
     setupDateChangeRefresh(main);
     renderFocusView(main);

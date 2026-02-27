@@ -17,6 +17,7 @@ const ICON_SVGS = {
   play: '<polygon points="5 3 19 12 5 21 5 3"/>',
   pause: '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',
   'rotate-ccw': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6.5 2.5 2.5 2 5 2 6.5 0 1.5.5 2.5 2.5 2.5 0 0 0 4.5-2.5c0-2-1-3.5-3.5-4-1.38-.5-2.5 1-2.5 2.5 0 1 1 1 2.5"/>',
 };
 
 const SIZE = 24;
@@ -28,4 +29,12 @@ export function renderIcon(name, size = SIZE) {
 
 export function iconNames() {
   return Object.keys(ICON_SVGS);
+}
+
+/** Habbitto logo – leaf in circle, habit/focus theme */
+export function renderLogo(size = 40) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 40 40" fill="none" class="app-logo-svg" aria-hidden="true">
+    <circle cx="20" cy="20" r="17" stroke="currentColor" stroke-width="2" fill="none"/>
+    <path d="M20 10c-4 4-6 8-6 12 0 4 2 7 6 10 4-3 6-6 6-10 0-4-2-8-6-12z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </svg>`;
 }

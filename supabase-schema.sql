@@ -26,7 +26,7 @@ create policy "Users can manage own sessions"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- Completions table (per user, per habit)
+-- Completions table (per user, per habit, per day – one row per habit per date)
 create table if not exists completions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
@@ -34,6 +34,10 @@ create table if not exists completions (
   date text not null,
   focus_minutes int default 0
 );
+
+-- Prevent duplicate rows: one completion per (user, habit, date)
+create unique index if not exists completions_user_habit_date_unique
+  on completions(user_id, habit_id, date);
 
 -- Row Level Security (RLS)
 alter table habits enable row level security;

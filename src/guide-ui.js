@@ -26,7 +26,7 @@ export function renderGuideView(container, onClose) {
     {
       icon: 'zap',
       title: 'Pick habit & time',
-      text: 'Under "Which habit?" choose what you’re doing. Then pick a duration (30, 45, 60… or Custom). Hit Start when you’re ready.',
+      text: 'Under "Select habit" choose what you’re doing. Then pick a duration (30, 45, 60… or Custom). Hit Start when you’re ready.',
     },
     {
       icon: 'play',

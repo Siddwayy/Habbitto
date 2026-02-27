@@ -120,20 +120,41 @@ export async function upsertCompletion(userId, habitId, date, focusMinutes) {
     .eq('user_id', userId)
     .eq('habit_id', habitId)
     .eq('date', date)
-    .single();
+    .maybeSingle();
   if (existing) {
     const newMins = (existing.focus_minutes || 0) + focusMinutes;
-    await supabase
+    const { error } = await supabase
       .from('completions')
       .update({ focus_minutes: newMins })
       .eq('id', existing.id);
+    if (error) throw error;
   } else {
-    await supabase.from('completions').insert({
+    const { error } = await supabase.from('completions').insert({
       user_id: userId,
       habit_id: habitId,
       date,
       focus_minutes: focusMinutes,
     });
+    if (error) {
+      if (error.code === '23505') {
+        const { data: row } = await supabase
+          .from('completions')
+          .select('id, focus_minutes')
+          .eq('user_id', userId)
+          .eq('habit_id', habitId)
+          .eq('date', date)
+          .maybeSingle();
+        if (row) {
+          const newMins = (row.focus_minutes || 0) + focusMinutes;
+          await supabase
+            .from('completions')
+            .update({ focus_minutes: newMins })
+            .eq('id', row.id);
+          return;
+        }
+      }
+      throw error;
+    }
   }
 }
 
@@ -145,7 +166,7 @@ export async function toggleCompletionDb(userId, habitId, date, focusMinutes = n
     .eq('user_id', userId)
     .eq('habit_id', habitId)
     .eq('date', date)
-    .single();
+    .maybeSingle();
   if (existing) {
     await supabase.from('completions').delete().eq('id', existing.id);
     return false;
