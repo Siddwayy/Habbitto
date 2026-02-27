@@ -20,7 +20,6 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 - **Focus timer** — Preset durations (30, 45, 60, 75, 90 min), custom duration, circular progress, optional break phase
 - **Stopwatch** — Free-form timing with save to habit
 - **Time & streaks** — Time spent per habit, daily completions, consecutive-day streak counter
-- **Galaxy view** — Visual summary of sessions
 - **Session-end flow** — Congratulatory dialog and optional sound when the focus timer finishes
 - **Guide** — In-app “How it works” with simple steps and icons
 - **Shortcuts** — Space to start/pause/resume; keys 1–5 for duration presets when idle

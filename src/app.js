@@ -1,11 +1,10 @@
 import { renderFocusView, updateTimerDisplay, setSaveClickHandler } from './ui.js';
 import { renderAuthView } from './auth-ui.js';
-import { renderGalaxyView } from './galaxy-ui.js';
 import { renderGuideView } from './guide-ui.js';
 import { renderLeaderboardView } from './leaderboard-ui.js';
 import { renderSettingsView } from './settings-ui.js';
 import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId, getHabitsList, getTodayKey } from './habits.js';
-import { loadSessions, setUserId as setSessionsUserId, subscribeSessions } from './sessions.js';
+import { setUserId as setSessionsUserId } from './sessions.js';
 import {
   subscribeTimer,
   onWorkComplete,
@@ -21,7 +20,6 @@ import {
   resume,
   setDurations,
   reset,
-  restoreFromSnapshot,
   setDisplayState,
   setSyncDelegate,
 } from './timer.js';
@@ -30,14 +28,6 @@ import { supabase } from './supabase.js';
 import * as sessionEndSound from './session-end-sound.js';
 import { initTheme, toggleTheme, getTheme } from './theme.js';
 import { setupSessionPersistence, recoverPendingSession } from './session-persistence.js';
-import {
-  setupLiveSessionSync,
-  readLiveSession,
-  isSessionActive,
-  isSessionStale,
-  isUserIdMatch,
-  getComputedDisplayState,
-} from './live-session-sync.js';
 import { renderIcon, renderLogo } from './icons.js';
 
 function escapeHtml(s) {
@@ -124,7 +114,6 @@ export async function initApp() {
           <div class="header-buttons-right">
             <button type="button" class="btn btn-leaderboard" id="btn-leaderboard">Leaderboard</button>
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
-            <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
             <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
           </div>
         </header>
@@ -134,7 +123,6 @@ export async function initApp() {
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
       <div id="settings-modal" class="modal settings-modal" aria-hidden="true"></div>
       <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
-      <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
     `;
     const main = app.querySelector('#focus-view');
     onSessionEndAlert(() => {
@@ -205,112 +193,43 @@ export async function initApp() {
       }
     };
     if (accountBtn) accountBtn.addEventListener('click', openSettings);
-    const galaxyBtn = app.querySelector('#btn-galaxy');
-    const openGalaxy = () => {
-      const overlay = document.getElementById('galaxy-overlay');
-      if (overlay) {
-        renderGalaxyView(overlay, () => { overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true'); });
-        overlay.classList.add('open');
-        overlay.setAttribute('aria-hidden', 'false');
-      }
-    };
-    if (galaxyBtn) galaxyBtn.addEventListener('click', openGalaxy);
     const themeBtn = app.querySelector('#btn-theme');
     if (themeBtn) themeBtn.addEventListener('click', () => {
       toggleTheme();
       themeBtn.innerHTML = renderIcon(getTheme() === 'light' ? 'moon' : 'sun');
     });
-    subscribeSessions(() => {
-      const overlay = document.getElementById('galaxy-overlay');
-      if (overlay?.classList.contains('open')) openGalaxy();
-    });
     setUserId(session?.user?.id ?? null);
     setSessionsUserId(session?.user?.id ?? null);
 
-    const currentUserId = session?.user?.id ?? 'local';
     const getUserId = () => session?.user?.id ?? 'local';
     const addFocusForCheckpoint = (habitId, minutes) => addFocusToCompletion(habitId, minutes, null, { recordSession: false });
     const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusForCheckpoint, getTodayKey, getUserId, getSessionHabitId);
     persistenceTeardown = () => persistence.teardown?.();
-    const sync = setupLiveSessionSync(getTimerState, currentUserId, {
-      onStorageUpdate: (display) =>
-        display ? setDisplayState(display) : setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 }),
-      onTakeOver: (liveSession) => {
-        restoreFromSnapshot(getComputedDisplayState(liveSession), true);
-        sync.startOwnerHeartbeat();
-        sync.pollForCommands(handleCommand);
-        sync.stopStaleCheck();
-        sync.stopStorageListener();
-        renderFocusView(main);
-      },
-    });
-    setSyncDelegate({ isFollower: () => sync.isFollower(), sendCommand: sync.sendCommand });
+    setSyncDelegate(null);
 
-    function handleCommand(cmd) {
-      if (cmd === 'pause') pause();
-      else if (cmd === 'resume') resume();
-      else if (cmd === 'reset') reset();
-      else if (cmd === 'save') {
-        const elapsed = getElapsedWorkMinutes();
-        const habitId = getSessionHabitId();
-        const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
-        const mode = getTimerState().mode ?? 'focus';
-        if (habitId) {
-          if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
-        }
-        persistence.stopPeriodicSave();
-        sync.stopOwnerHeartbeat();
-        sync.stopCommandPolling();
-        reset();
+    setSaveClickHandler(async () => {
+      const elapsed = getElapsedWorkMinutes();
+      const habitId = getSessionHabitId();
+      const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+      const mode = getTimerState().mode ?? 'focus';
+      persistence.stopPeriodicSave();
+      if (habitId && elapsed > 0) {
+        await addFocusToCompletion(habitId, delta, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
       }
-    }
-
-    setSaveClickHandler(() => {
-      if (sync.isFollower()) {
-        sync.sendCommand('save');
-        setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 });
-      } else {
-        const elapsed = getElapsedWorkMinutes();
-        const habitId = getSessionHabitId();
-        const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
-        const mode = getTimerState().mode ?? 'focus';
-        if (habitId) {
-          if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
-        }
-        persistence.stopPeriodicSave();
-        sync.stopOwnerHeartbeat();
-        sync.stopCommandPolling();
-        reset();
-      }
+      reset();
     });
 
-    onWorkComplete((habitId, totalMinutes) => {
+    onWorkComplete(async (habitId, totalMinutes) => {
       const delta = totalMinutes - persistence.getLastSavedMinutes();
       const mode = getTimerState().mode ?? 'focus';
-      if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-      if (totalMinutes > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: totalMinutes, sessionMode: mode });
       persistence.stopPeriodicSave();
-      sync.stopOwnerHeartbeat();
-      sync.stopCommandPolling();
+      if (totalMinutes > 0) {
+        await addFocusToCompletion(habitId, delta, null, { recordSession: true, sessionMinutes: totalMinutes, sessionMode: mode });
+      }
     });
 
-    await Promise.all([loadHabits(), loadSessions()]);
+    await loadHabits();
     await recoverPendingSession(addFocusToCompletion, getUserId);
-
-    const liveSession = readLiveSession();
-    if (liveSession && isSessionActive(liveSession) && isUserIdMatch(liveSession, currentUserId)) {
-      if (isSessionStale(liveSession)) {
-        restoreFromSnapshot(getComputedDisplayState(liveSession), true);
-        sync.startOwnerHeartbeat();
-        sync.pollForCommands(handleCommand);
-      } else {
-        setDisplayState(getComputedDisplayState(liveSession));
-        sync.startStorageListener();
-        sync.startStaleCheck();
-      }
-    }
 
     subscribeHabits(() => renderFocusView(main));
     let lastPhase, lastMode;
@@ -320,10 +239,6 @@ export async function initApp() {
       const weOwnTimer = isTimerRunning();
       if (isTicking && weOwnTimer) {
         persistence.startPeriodicSave();
-        sync.startOwnerHeartbeat();
-        sync.pollForCommands(handleCommand);
-        sync.stopStaleCheck();
-        sync.stopStorageListener();
         if (lastPhase === 'idle') {
           renderFocusView(main);
         } else {
@@ -331,11 +246,7 @@ export async function initApp() {
         }
       } else if (!isTicking) {
         persistence.stopPeriodicSave();
-        sync.stopOwnerHeartbeat();
-        sync.stopCommandPolling();
         if (state.phase === 'idle') {
-          sync.stopStaleCheck();
-          sync.stopStorageListener();
           if (lastPhase === 'idle' && lastMode === state.mode) {
             updateTimerDisplay(main);
           } else {
@@ -413,7 +324,6 @@ export async function initApp() {
           </div>
           <div class="header-buttons-right">
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
-            <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
             <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
           </div>
         </header>
@@ -423,7 +333,6 @@ export async function initApp() {
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
       <div id="settings-modal" class="modal settings-modal" aria-hidden="true"></div>
       <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
-      <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
     `;
     const main = app.querySelector('#focus-view');
     onSessionEndAlert(() => {
@@ -453,7 +362,6 @@ export async function initApp() {
     });
     const guideBtn = app.querySelector('#btn-guide');
     const settingsBtn = app.querySelector('#btn-settings');
-    const galaxyBtn = app.querySelector('#btn-galaxy');
     if (guideBtn) guideBtn.addEventListener('click', () => {
       const modal = document.getElementById('guide-modal');
       if (modal) {
@@ -476,111 +384,43 @@ export async function initApp() {
         modal.setAttribute('aria-hidden', 'false');
       }
     });
-    const openGalaxy = () => {
-      const overlay = document.getElementById('galaxy-overlay');
-      if (overlay) {
-        renderGalaxyView(overlay, () => { overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true'); });
-        overlay.classList.add('open');
-        overlay.setAttribute('aria-hidden', 'false');
-      }
-    };
-    if (galaxyBtn) galaxyBtn.addEventListener('click', openGalaxy);
     const themeBtn = app.querySelector('#btn-theme');
     if (themeBtn) themeBtn.addEventListener('click', () => {
       toggleTheme();
       themeBtn.innerHTML = renderIcon(getTheme() === 'light' ? 'moon' : 'sun');
     });
-    subscribeSessions(() => {
-      const overlay = document.getElementById('galaxy-overlay');
-      if (overlay?.classList.contains('open')) openGalaxy();
-    });
     setUserId(null);
     setSessionsUserId(null);
 
-    const currentUserId = 'local';
     const getUserId = () => 'local';
     const addFocusForCheckpoint = (habitId, minutes) => addFocusToCompletion(habitId, minutes, null, { recordSession: false });
     const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusForCheckpoint, getTodayKey, getUserId, getSessionHabitId);
     persistenceTeardown = () => persistence.teardown?.();
-    const sync = setupLiveSessionSync(getTimerState, currentUserId, {
-      onStorageUpdate: (display) =>
-        display ? setDisplayState(display) : setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 }),
-      onTakeOver: (liveSession) => {
-        restoreFromSnapshot(getComputedDisplayState(liveSession), true);
-        sync.startOwnerHeartbeat();
-        sync.pollForCommands(handleCommand);
-        sync.stopStaleCheck();
-        sync.stopStorageListener();
-        renderFocusView(main);
-      },
-    });
-    setSyncDelegate({ isFollower: () => sync.isFollower(), sendCommand: sync.sendCommand });
+    setSyncDelegate(null);
 
-    function handleCommand(cmd) {
-      if (cmd === 'pause') pause();
-      else if (cmd === 'resume') resume();
-      else if (cmd === 'reset') reset();
-      else if (cmd === 'save') {
-        const elapsed = getElapsedWorkMinutes();
-        const habitId = getSessionHabitId();
-        const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
-        const mode = getTimerState().mode ?? 'focus';
-        if (habitId) {
-          if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
-        }
-        persistence.stopPeriodicSave();
-        sync.stopOwnerHeartbeat();
-        sync.stopCommandPolling();
-        reset();
+    setSaveClickHandler(async () => {
+      const elapsed = getElapsedWorkMinutes();
+      const habitId = getSessionHabitId();
+      const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+      const mode = getTimerState().mode ?? 'focus';
+      persistence.stopPeriodicSave();
+      if (habitId && elapsed > 0) {
+        await addFocusToCompletion(habitId, delta, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
       }
-    }
-
-    setSaveClickHandler(() => {
-      if (sync.isFollower()) {
-        sync.sendCommand('save');
-        setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 });
-      } else {
-        const elapsed = getElapsedWorkMinutes();
-        const habitId = getSessionHabitId();
-        const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
-        const mode = getTimerState().mode ?? 'focus';
-        if (habitId) {
-          if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
-        }
-        persistence.stopPeriodicSave();
-        sync.stopOwnerHeartbeat();
-        sync.stopCommandPolling();
-        reset();
-      }
+      reset();
     });
 
-    onWorkComplete((habitId, totalMinutes) => {
+    onWorkComplete(async (habitId, totalMinutes) => {
       const delta = totalMinutes - persistence.getLastSavedMinutes();
       const mode = getTimerState().mode ?? 'focus';
-      if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-      if (totalMinutes > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: totalMinutes, sessionMode: mode });
       persistence.stopPeriodicSave();
-      sync.stopOwnerHeartbeat();
-      sync.stopCommandPolling();
+      if (totalMinutes > 0) {
+        await addFocusToCompletion(habitId, delta, null, { recordSession: true, sessionMinutes: totalMinutes, sessionMode: mode });
+      }
     });
 
-    await Promise.all([loadHabits(), loadSessions()]);
+    await loadHabits();
     await recoverPendingSession(addFocusToCompletion, getUserId);
-
-    const liveSession = readLiveSession();
-    if (liveSession && isSessionActive(liveSession) && isUserIdMatch(liveSession, currentUserId)) {
-      if (isSessionStale(liveSession)) {
-        restoreFromSnapshot(getComputedDisplayState(liveSession), true);
-        sync.startOwnerHeartbeat();
-        sync.pollForCommands(handleCommand);
-      } else {
-        setDisplayState(getComputedDisplayState(liveSession));
-        sync.startStorageListener();
-        sync.startStaleCheck();
-      }
-    }
 
     subscribeHabits(() => renderFocusView(main));
     let lastPhase, lastMode;
@@ -590,10 +430,6 @@ export async function initApp() {
       const weOwnTimer = isTimerRunning();
       if (isTicking && weOwnTimer) {
         persistence.startPeriodicSave();
-        sync.startOwnerHeartbeat();
-        sync.pollForCommands(handleCommand);
-        sync.stopStaleCheck();
-        sync.stopStorageListener();
         if (lastPhase === 'idle') {
           renderFocusView(main);
         } else {
@@ -601,11 +437,7 @@ export async function initApp() {
         }
       } else if (!isTicking) {
         persistence.stopPeriodicSave();
-        sync.stopOwnerHeartbeat();
-        sync.stopCommandPolling();
         if (state.phase === 'idle') {
-          sync.stopStaleCheck();
-          sync.stopStorageListener();
           if (lastPhase === 'idle' && lastMode === state.mode) {
             updateTimerDisplay(main);
           } else {

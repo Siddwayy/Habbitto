@@ -41,7 +41,7 @@ export function renderGuideView(container, onClose) {
     {
       icon: 'sun',
       title: 'See your progress',
-      text: 'Check "Time spent" to see how much you’ve focused per habit. Open Galaxy to celebrate your sessions and see the big picture.',
+      text: 'Check "Time spent" to see how much you’ve focused per habit. ',
     },
     {
       icon: 'zap',

@@ -193,11 +193,11 @@ export async function toggleCompletionToday(habitId, focusMinutes = null) {
 }
 
 /**
- * Add focus minutes to completions (and optionally to sessions for galaxy).
+ * Add focus minutes to habit and record the session.
  * @param {string} habitId
- * @param {number} focusMinutes - delta for completions (to avoid double-counting)
+ * @param {number} focusMinutes - minutes to add to completions
  * @param {string|null} date - YYYY-MM-DD, defaults to today
- * @param {{ recordSession?: boolean, sessionMinutes?: number, sessionMode?: 'focus'|'stopwatch' }} options - recordSession: add to sessions (default true). sessionMinutes: use this for session. sessionMode: 'focus' or 'stopwatch'; only focus counts for constellations.
+ * @param {{ recordSession?: boolean, sessionMinutes?: number, sessionMode?: 'focus'|'stopwatch' }} options - recordSession: record session (default true). sessionMinutes: full session duration for recording.
  */
 export async function addFocusToCompletion(habitId, focusMinutes, date = null, options = {}) {
   const { recordSession = true, sessionMinutes, sessionMode = 'focus' } = options;
@@ -273,14 +273,6 @@ export function getHabitStreak(habitId) {
     d.setDate(d.getDate() - 1);
   }
   return streak;
-}
-
-/** Completions formatted as sessions for the Galaxy (fallback when sessions table is empty). */
-export function getCompletionsAsSessions() {
-  const completions = getCompletionsList();
-  return completions
-    .filter((c) => (c.focusMinutes || 0) > 0)
-    .map((c) => ({ habitId: c.habitId, date: c.date, focusMinutes: c.focusMinutes || 0 }));
 }
 
 /** Last 30 days with total focus minutes per day. Returns [{ date, totalMinutes }, ...] */

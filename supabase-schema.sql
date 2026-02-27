@@ -14,7 +14,7 @@ create table if not exists habits (
   created_at timestamptz default now()
 );
 
--- Sessions table: one row per saved focus session (for galaxy map)
+-- Sessions table: one row per saved focus session
 create table if not exists sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
