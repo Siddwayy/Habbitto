@@ -14,6 +14,7 @@ import {
 import {
   getTimerState,
   getElapsedWorkMinutes,
+  getSessionHabitId,
   startWork,
   startStopwatch,
   pause,
@@ -507,7 +508,7 @@ export function renderFocusView(container) {
       return;
     }
     const elapsed = getElapsedWorkMinutes();
-    const habitId = getTimerState().habitId;
+    const habitId = getSessionHabitId();
     const delta = Math.max(0, elapsed - getLastSavedMinutes());
     if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
     stopAndResetPersistence();

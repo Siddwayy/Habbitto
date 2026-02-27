@@ -1,5 +1,13 @@
 import { getSessionsList } from './sessions.js';
+import { getCompletionsAsSessions } from './habits.js';
 import { computeStars, computeConstellationLines, computeStreak, getMilestone, computeConstellationProgress } from './galaxy.js';
+
+/** Sessions for galaxy; falls back to completions when sessions are empty. */
+function getSessionsForGalaxy() {
+  const sessions = getSessionsList();
+  if (sessions.length > 0) return sessions;
+  return getCompletionsAsSessions();
+}
 
 /** Simplified constellation line art (viewBox 0 0 40 40). Stars use constellation-star class for glow. */
 const CONSTELLATION_SVGS = {
@@ -36,7 +44,7 @@ function formatSessionDate(dateStr) {
 }
 
 export function renderGalaxyView(container, onClose) {
-  const sessions = getSessionsList();
+  const sessions = getSessionsForGalaxy();
   const stars = computeStars(sessions);
   const lines = computeConstellationLines(stars);
   const streak = computeStreak(sessions);

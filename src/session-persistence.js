@@ -12,21 +12,22 @@ let lastSavedMinutes = 0;
 let saveIntervalId = null;
 let unloadTeardown = null;
 
-async function saveCheckpoint(getTimerState, getElapsedWorkMinutes, addFocusToCompletion) {
+async function saveCheckpoint(getTimerState, getElapsedWorkMinutes, getSessionHabitId, addFocusToCompletion) {
   const state = getTimerState();
   const isRunning = state.phase === 'work' || state.phase === 'stopwatch';
-  if (!isRunning || !state.habitId) return;
+  const habitId = getSessionHabitId?.() ?? state.habitId;
+  if (!isRunning || !habitId) return;
   const elapsed = getElapsedWorkMinutes();
   const delta = elapsed - lastSavedMinutes;
   if (delta > 0) {
     try {
-      await addFocusToCompletion(state.habitId, delta);
+      await addFocusToCompletion(habitId, delta);
       lastSavedMinutes = elapsed;
     } catch (_) {}
   }
 }
 
-export function setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusToCompletion, getTodayKey, getUserId = () => null) {
+export function setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusToCompletion, getTodayKey, getUserId = () => null, getSessionHabitId = null) {
   if (saveIntervalId) {
     clearInterval(saveIntervalId);
     saveIntervalId = null;
@@ -38,12 +39,13 @@ export function setupSessionPersistence(getTimerState, getElapsedWorkMinutes, ad
     unloadTeardown = null;
   }
 
-  const doSaveCheckpoint = () => saveCheckpoint(getTimerState, getElapsedWorkMinutes, addFocusToCompletion);
+  const doSaveCheckpoint = () => saveCheckpoint(getTimerState, getElapsedWorkMinutes, getSessionHabitId, addFocusToCompletion);
 
   const storePendingSession = () => {
     const state = getTimerState();
     const isRunning = state.phase === 'work' || state.phase === 'stopwatch';
-    if (!isRunning || !state.habitId) return;
+    const habitId = (getSessionHabitId && getSessionHabitId()) ?? state.habitId;
+    if (!isRunning || !habitId) return;
     const elapsed = getElapsedWorkMinutes();
     const delta = elapsed - lastSavedMinutes;
     if (delta > 0) {
@@ -52,7 +54,7 @@ export function setupSessionPersistence(getTimerState, getElapsedWorkMinutes, ad
         const userId = getUserId();
         localStorage.setItem(
           PENDING_SESSION_KEY,
-          JSON.stringify({ habitId: state.habitId, date, focusMinutes: delta, userId: userId ?? 'local' })
+          JSON.stringify({ habitId, date, focusMinutes: delta, userId: userId ?? 'local' })
         );
       } catch (_) {}
     }

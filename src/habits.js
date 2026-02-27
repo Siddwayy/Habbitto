@@ -275,6 +275,14 @@ export function getHabitStreak(habitId) {
   return streak;
 }
 
+/** Completions formatted as sessions for the Galaxy (fallback when sessions table is empty). */
+export function getCompletionsAsSessions() {
+  const completions = getCompletionsList();
+  return completions
+    .filter((c) => (c.focusMinutes || 0) > 0)
+    .map((c) => ({ habitId: c.habitId, date: c.date, focusMinutes: c.focusMinutes || 0 }));
+}
+
 /** Last 30 days with total focus minutes per day. Returns [{ date, totalMinutes }, ...] */
 export function getDailyTotalsLast30Days() {
   const completions = getCompletionsList();

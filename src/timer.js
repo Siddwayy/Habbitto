@@ -14,6 +14,7 @@ let state = {
 
 const listeners = [];
 let syncDelegate = null; // { isFollower, sendCommand }
+let sessionHabitId = null; // Locked when session starts; used for recording to avoid mid-session habit switch
 let onWorkCompleteCallback = null;
 let onSessionEndAlertCallback = null;
 
@@ -53,9 +54,10 @@ function stopInterval() {
 
 function onPhaseEnd() {
   if (state.phase === 'work') {
-    if (onWorkCompleteCallback && state.habitId) {
+    const habitForRecord = sessionHabitId ?? state.habitId;
+    if (onWorkCompleteCallback && habitForRecord) {
       const minutes = Math.floor(state.workDuration / 60);
-      onWorkCompleteCallback(state.habitId, minutes);
+      onWorkCompleteCallback(habitForRecord, minutes);
     }
     if (onSessionEndAlertCallback) {
       try {
@@ -93,6 +95,11 @@ export function isTimerRunning() {
   return !!state.intervalId;
 }
 
+/** Habit ID to use when recording a session; locked at session start. */
+export function getSessionHabitId() {
+  return sessionHabitId ?? state.habitId;
+}
+
 export function setDurations(workMinutes, breakMinutes) {
   state.workDuration = (workMinutes ?? 25) * 60;
   state.breakDuration = (breakMinutes ?? 5) * 60;
@@ -116,6 +123,7 @@ export function setMode(mode) {
 
 export function startWork(workSeconds = null) {
   stopInterval();
+  sessionHabitId = state.habitId;
   state.phase = 'work';
   state.remainingSeconds = workSeconds ?? state.workDuration;
   state.intervalId = setInterval(tick, 1000);
@@ -146,6 +154,7 @@ export function restoreFromSnapshot(snapshot, startInterval = false) {
   state.stopwatchSeconds = Math.max(0, Math.round(snapshot.stopwatchSeconds ?? 0));
   state.habitId = snapshot.habitId ?? null;
   if (startInterval && (state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch')) {
+    sessionHabitId = state.habitId;
     state.intervalId = setInterval(tick, 1000);
   }
   notify();
@@ -196,6 +205,7 @@ export function reset() {
     return;
   }
   stopInterval();
+  sessionHabitId = null;
   state.phase = 'idle';
   state.remainingSeconds = 0;
   state.stopwatchSeconds = 0;
@@ -204,6 +214,7 @@ export function reset() {
 
 export function startStopwatch() {
   stopInterval();
+  sessionHabitId = state.habitId;
   state.phase = 'stopwatch';
   state.intervalId = setInterval(tick, 1000);
   notify();

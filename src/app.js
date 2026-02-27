@@ -12,6 +12,7 @@ import {
   onSessionEndAlert,
   getTimerState,
   getElapsedWorkMinutes,
+  getSessionHabitId,
   isTimerRunning,
   startWork,
   startStopwatch,
@@ -229,7 +230,7 @@ export async function initApp() {
     const currentUserId = session?.user?.id ?? 'local';
     const getUserId = () => session?.user?.id ?? 'local';
     const addFocusForCheckpoint = (habitId, minutes) => addFocusToCompletion(habitId, minutes, null, { recordSession: false });
-    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusForCheckpoint, getTodayKey, getUserId);
+    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusForCheckpoint, getTodayKey, getUserId, getSessionHabitId);
     persistenceTeardown = () => persistence.teardown?.();
     const sync = setupLiveSessionSync(getTimerState, currentUserId, {
       onStorageUpdate: (display) =>
@@ -251,7 +252,7 @@ export async function initApp() {
       else if (cmd === 'reset') reset();
       else if (cmd === 'save') {
         const elapsed = getElapsedWorkMinutes();
-        const habitId = getTimerState().habitId;
+        const habitId = getSessionHabitId();
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
         if (habitId) {
           if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
@@ -270,7 +271,7 @@ export async function initApp() {
         setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 });
       } else {
         const elapsed = getElapsedWorkMinutes();
-        const habitId = getTimerState().habitId;
+        const habitId = getSessionHabitId();
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
         if (habitId) {
           if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
@@ -496,7 +497,7 @@ export async function initApp() {
     const currentUserId = 'local';
     const getUserId = () => 'local';
     const addFocusForCheckpoint = (habitId, minutes) => addFocusToCompletion(habitId, minutes, null, { recordSession: false });
-    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusForCheckpoint, getTodayKey, getUserId);
+    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusForCheckpoint, getTodayKey, getUserId, getSessionHabitId);
     persistenceTeardown = () => persistence.teardown?.();
     const sync = setupLiveSessionSync(getTimerState, currentUserId, {
       onStorageUpdate: (display) =>
@@ -518,7 +519,7 @@ export async function initApp() {
       else if (cmd === 'reset') reset();
       else if (cmd === 'save') {
         const elapsed = getElapsedWorkMinutes();
-        const habitId = getTimerState().habitId;
+        const habitId = getSessionHabitId();
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
         if (habitId) {
           if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
@@ -537,7 +538,7 @@ export async function initApp() {
         setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 });
       } else {
         const elapsed = getElapsedWorkMinutes();
-        const habitId = getTimerState().habitId;
+        const habitId = getSessionHabitId();
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
         if (habitId) {
           if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
