@@ -158,6 +158,21 @@ export async function upsertCompletion(userId, habitId, date, focusMinutes) {
   }
 }
 
+export async function fetchLeaderboard(limit = 50) {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc('get_leaderboard', { limit_count: limit });
+  if (error) {
+    console.warn('fetchLeaderboard failed:', error.message);
+    return [];
+  }
+  return (data || []).map(row => ({
+    userId: row.user_id,
+    displayName: row.display_name || 'Anonymous',
+    totalMinutes: Number(row.total_minutes) || 0,
+    rank: row.rank || 0,
+  }));
+}
+
 export async function toggleCompletionDb(userId, habitId, date, focusMinutes = null) {
   if (!supabase || !userId) throw new Error('Not authenticated');
   const { data: existing } = await supabase

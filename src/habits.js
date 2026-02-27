@@ -192,8 +192,8 @@ export async function toggleCompletionToday(habitId, focusMinutes = null) {
   notify();
 }
 
-export async function addFocusToCompletion(habitId, focusMinutes) {
-  const today = getTodayKey();
+export async function addFocusToCompletion(habitId, focusMinutes, date = null) {
+  const today = date || getTodayKey();
   if (userId) {
     try {
       await db.upsertCompletion(userId, habitId, today, focusMinutes);

@@ -57,3 +57,36 @@ create policy "Users can manage own completions"
   on completions for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Leaderboard: returns ranked users with total focus time (for logged-in users)
+create or replace function public.get_leaderboard(limit_count int default 50)
+returns table (user_id uuid, display_name text, total_minutes bigint, rank int)
+language sql
+security definer
+set search_path = public, auth
+as $$
+  with totals as (
+    select c.user_id, sum(c.focus_minutes) as total
+    from public.completions c
+    group by c.user_id
+  ),
+  ranked as (
+    select t.user_id, t.total,
+      coalesce(
+        nullif(trim(u.raw_user_meta_data->>'nickname'), ''),
+        nullif(trim(u.raw_user_meta_data->>'full_name'), ''),
+        nullif(trim(u.raw_user_meta_data->>'name'), ''),
+        split_part(u.email, '@', 1),
+        'Anonymous'
+      ) as display_name
+    from totals t
+    left join auth.users u on u.id = t.user_id
+    order by t.total desc
+    limit limit_count
+  )
+  select r.user_id, r.display_name, r.total::bigint, row_number() over (order by r.total desc)::int as rank
+  from ranked r;
+$$;
+
+-- Allow authenticated users to call the leaderboard
+grant execute on function public.get_leaderboard(int) to authenticated;

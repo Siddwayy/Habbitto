@@ -1,15 +1,42 @@
-import { renderFocusView, updateTimerDisplay } from './ui.js';
+import { renderFocusView, updateTimerDisplay, setSaveClickHandler } from './ui.js';
 import { renderAuthView } from './auth-ui.js';
 import { renderGalaxyView } from './galaxy-ui.js';
 import { renderGuideView } from './guide-ui.js';
+import { renderLeaderboardView } from './leaderboard-ui.js';
 import { renderSettingsView } from './settings-ui.js';
-import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId, getHabitsList } from './habits.js';
+import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId, getHabitsList, getTodayKey } from './habits.js';
 import { loadSessions, setUserId as setSessionsUserId, subscribeSessions } from './sessions.js';
-import { subscribeTimer, onWorkComplete, onSessionEndAlert, getTimerState, startWork, startStopwatch, pause, pauseStopwatch, resume, setDurations, reset } from './timer.js';
+import {
+  subscribeTimer,
+  onWorkComplete,
+  onSessionEndAlert,
+  getTimerState,
+  getElapsedWorkMinutes,
+  isTimerRunning,
+  startWork,
+  startStopwatch,
+  pause,
+  pauseStopwatch,
+  resume,
+  setDurations,
+  reset,
+  restoreFromSnapshot,
+  setDisplayState,
+  setSyncDelegate,
+} from './timer.js';
 import { getSession, onAuthStateChange, signOut } from './auth.js';
 import { supabase } from './supabase.js';
 import * as sessionEndSound from './session-end-sound.js';
 import { initTheme, toggleTheme, getTheme } from './theme.js';
+import { setupSessionPersistence, recoverPendingSession } from './session-persistence.js';
+import {
+  setupLiveSessionSync,
+  readLiveSession,
+  isSessionActive,
+  isSessionStale,
+  isUserIdMatch,
+  getComputedDisplayState,
+} from './live-session-sync.js';
 import { renderIcon, renderLogo } from './icons.js';
 
 function escapeHtml(s) {
@@ -80,6 +107,8 @@ export async function initApp() {
     }
   });
 
+  let persistenceTeardown = null;
+
   const showMain = async (session) => {
     app.innerHTML = `
       <div class="app-header-wrap">
@@ -92,6 +121,7 @@ export async function initApp() {
             <button type="button" class="btn btn-account" id="btn-account">Account</button>
           </div>
           <div class="header-buttons-right">
+            <button type="button" class="btn btn-leaderboard" id="btn-leaderboard">Leaderboard</button>
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
             <button type="button" class="btn btn-galaxy" id="btn-galaxy">Galaxy</button>
             <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
@@ -99,6 +129,7 @@ export async function initApp() {
         </header>
       </div>
       <main class="focus-view" id="focus-view"></main>
+      <div id="leaderboard-modal" class="modal leaderboard-modal" aria-hidden="true"></div>
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
       <div id="settings-modal" class="modal settings-modal" aria-hidden="true"></div>
       <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
@@ -129,6 +160,18 @@ export async function initApp() {
       }
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
+    });
+    const leaderboardBtn = app.querySelector('#btn-leaderboard');
+    if (leaderboardBtn) leaderboardBtn.addEventListener('click', async () => {
+      const modal = document.getElementById('leaderboard-modal');
+      if (modal) {
+        await renderLeaderboardView(modal, () => {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }, session?.user?.id);
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
     });
     const guideBtn = app.querySelector('#btn-guide');
     const accountBtn = app.querySelector('#btn-account');
@@ -182,23 +225,116 @@ export async function initApp() {
     });
     setUserId(session?.user?.id ?? null);
     setSessionsUserId(session?.user?.id ?? null);
-    onWorkComplete(addFocusToCompletion);
+
+    const currentUserId = session?.user?.id ?? 'local';
+    const getUserId = () => session?.user?.id ?? 'local';
+    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusToCompletion, getTodayKey, getUserId);
+    persistenceTeardown = () => persistence.teardown?.();
+    const sync = setupLiveSessionSync(getTimerState, currentUserId, {
+      onStorageUpdate: (display) =>
+        display ? setDisplayState(display) : setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 }),
+      onTakeOver: (liveSession) => {
+        restoreFromSnapshot(getComputedDisplayState(liveSession), true);
+        sync.startOwnerHeartbeat();
+        sync.pollForCommands(handleCommand);
+        sync.stopStaleCheck();
+        sync.stopStorageListener();
+        renderFocusView(main);
+      },
+    });
+    setSyncDelegate({ isFollower: () => sync.isFollower(), sendCommand: sync.sendCommand });
+
+    function handleCommand(cmd) {
+      if (cmd === 'pause') pause();
+      else if (cmd === 'resume') resume();
+      else if (cmd === 'reset') reset();
+      else if (cmd === 'save') {
+        const elapsed = getElapsedWorkMinutes();
+        const habitId = getTimerState().habitId;
+        const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+        if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+        persistence.stopPeriodicSave();
+        sync.stopOwnerHeartbeat();
+        sync.stopCommandPolling();
+        reset();
+      }
+    }
+
+    setSaveClickHandler(() => {
+      if (sync.isFollower()) {
+        sync.sendCommand('save');
+        setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 });
+      } else {
+        const elapsed = getElapsedWorkMinutes();
+        const habitId = getTimerState().habitId;
+        const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+        if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+        persistence.stopPeriodicSave();
+        sync.stopOwnerHeartbeat();
+        sync.stopCommandPolling();
+        reset();
+      }
+    });
+
+    onWorkComplete((habitId, totalMinutes) => {
+      const delta = totalMinutes - persistence.getLastSavedMinutes();
+      if (delta > 0) addFocusToCompletion(habitId, delta);
+      persistence.stopPeriodicSave();
+      sync.stopOwnerHeartbeat();
+      sync.stopCommandPolling();
+    });
+
     await Promise.all([loadHabits(), loadSessions()]);
+    await recoverPendingSession(addFocusToCompletion, getUserId);
+
+    const liveSession = readLiveSession();
+    if (liveSession && isSessionActive(liveSession) && isUserIdMatch(liveSession, currentUserId)) {
+      if (isSessionStale(liveSession)) {
+        restoreFromSnapshot(getComputedDisplayState(liveSession), true);
+        sync.startOwnerHeartbeat();
+        sync.pollForCommands(handleCommand);
+      } else {
+        setDisplayState(getComputedDisplayState(liveSession));
+        sync.startStorageListener();
+        sync.startStaleCheck();
+      }
+    }
+
     subscribeHabits(() => renderFocusView(main));
     let lastPhase, lastMode;
     subscribeTimer((state) => {
       if (document.getElementById('modal-custom-habit')?.classList.contains('open')) return;
       const isTicking = state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch';
-      if (isTicking) {
+      const weOwnTimer = isTimerRunning();
+      if (isTicking && weOwnTimer) {
+        persistence.startPeriodicSave();
+        sync.startOwnerHeartbeat();
+        sync.pollForCommands(handleCommand);
+        sync.stopStaleCheck();
+        sync.stopStorageListener();
         if (lastPhase === 'idle') {
           renderFocusView(main);
         } else {
           updateTimerDisplay(main);
         }
-      } else if (state.phase === 'idle' && lastPhase === 'idle' && lastMode === state.mode) {
-        updateTimerDisplay(main);
+      } else if (!isTicking) {
+        persistence.stopPeriodicSave();
+        sync.stopOwnerHeartbeat();
+        sync.stopCommandPolling();
+        if (state.phase === 'idle') {
+          sync.stopStaleCheck();
+          sync.stopStorageListener();
+          if (lastPhase === 'idle' && lastMode === state.mode) {
+            updateTimerDisplay(main);
+          } else {
+            renderFocusView(main);
+          }
+        } else {
+          if (lastPhase === 'idle') renderFocusView(main);
+          else updateTimerDisplay(main);
+        }
       } else {
-        renderFocusView(main);
+        updateTimerDisplay(main);
       }
       lastPhase = state.phase;
       lastMode = state.mode;
@@ -208,6 +344,9 @@ export async function initApp() {
   };
 
   const showAuth = () => {
+    setSaveClickHandler(null);
+    setSyncDelegate(null);
+    persistenceTeardown?.();
     app.innerHTML = `
       <main class="auth-view" id="auth-view"></main>
     `;
@@ -268,6 +407,7 @@ export async function initApp() {
         </header>
       </div>
       <main class="focus-view" id="focus-view"></main>
+      <div id="leaderboard-modal" class="modal leaderboard-modal" aria-hidden="true"></div>
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
       <div id="settings-modal" class="modal settings-modal" aria-hidden="true"></div>
       <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
@@ -342,24 +482,118 @@ export async function initApp() {
       const overlay = document.getElementById('galaxy-overlay');
       if (overlay?.classList.contains('open')) openGalaxy();
     });
+    setUserId(null);
     setSessionsUserId(null);
-    onWorkComplete(addFocusToCompletion);
+
+    const currentUserId = 'local';
+    const getUserId = () => 'local';
+    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusToCompletion, getTodayKey, getUserId);
+    persistenceTeardown = () => persistence.teardown?.();
+    const sync = setupLiveSessionSync(getTimerState, currentUserId, {
+      onStorageUpdate: (display) =>
+        display ? setDisplayState(display) : setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 }),
+      onTakeOver: (liveSession) => {
+        restoreFromSnapshot(getComputedDisplayState(liveSession), true);
+        sync.startOwnerHeartbeat();
+        sync.pollForCommands(handleCommand);
+        sync.stopStaleCheck();
+        sync.stopStorageListener();
+        renderFocusView(main);
+      },
+    });
+    setSyncDelegate({ isFollower: () => sync.isFollower(), sendCommand: sync.sendCommand });
+
+    function handleCommand(cmd) {
+      if (cmd === 'pause') pause();
+      else if (cmd === 'resume') resume();
+      else if (cmd === 'reset') reset();
+      else if (cmd === 'save') {
+        const elapsed = getElapsedWorkMinutes();
+        const habitId = getTimerState().habitId;
+        const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+        if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+        persistence.stopPeriodicSave();
+        sync.stopOwnerHeartbeat();
+        sync.stopCommandPolling();
+        reset();
+      }
+    }
+
+    setSaveClickHandler(() => {
+      if (sync.isFollower()) {
+        sync.sendCommand('save');
+        setDisplayState({ phase: 'idle', remainingSeconds: 0, stopwatchSeconds: 0 });
+      } else {
+        const elapsed = getElapsedWorkMinutes();
+        const habitId = getTimerState().habitId;
+        const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+        if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+        persistence.stopPeriodicSave();
+        sync.stopOwnerHeartbeat();
+        sync.stopCommandPolling();
+        reset();
+      }
+    });
+
+    onWorkComplete((habitId, totalMinutes) => {
+      const delta = totalMinutes - persistence.getLastSavedMinutes();
+      if (delta > 0) addFocusToCompletion(habitId, delta);
+      persistence.stopPeriodicSave();
+      sync.stopOwnerHeartbeat();
+      sync.stopCommandPolling();
+    });
+
     await Promise.all([loadHabits(), loadSessions()]);
+    await recoverPendingSession(addFocusToCompletion, getUserId);
+
+    const liveSession = readLiveSession();
+    if (liveSession && isSessionActive(liveSession) && isUserIdMatch(liveSession, currentUserId)) {
+      if (isSessionStale(liveSession)) {
+        restoreFromSnapshot(getComputedDisplayState(liveSession), true);
+        sync.startOwnerHeartbeat();
+        sync.pollForCommands(handleCommand);
+      } else {
+        setDisplayState(getComputedDisplayState(liveSession));
+        sync.startStorageListener();
+        sync.startStaleCheck();
+      }
+    }
+
     subscribeHabits(() => renderFocusView(main));
     let lastPhase, lastMode;
     subscribeTimer((state) => {
       if (document.getElementById('modal-custom-habit')?.classList.contains('open')) return;
       const isTicking = state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch';
-      if (isTicking) {
+      const weOwnTimer = isTimerRunning();
+      if (isTicking && weOwnTimer) {
+        persistence.startPeriodicSave();
+        sync.startOwnerHeartbeat();
+        sync.pollForCommands(handleCommand);
+        sync.stopStaleCheck();
+        sync.stopStorageListener();
         if (lastPhase === 'idle') {
           renderFocusView(main);
         } else {
           updateTimerDisplay(main);
         }
-      } else if (state.phase === 'idle' && lastPhase === 'idle' && lastMode === state.mode) {
-        updateTimerDisplay(main);
+      } else if (!isTicking) {
+        persistence.stopPeriodicSave();
+        sync.stopOwnerHeartbeat();
+        sync.stopCommandPolling();
+        if (state.phase === 'idle') {
+          sync.stopStaleCheck();
+          sync.stopStorageListener();
+          if (lastPhase === 'idle' && lastMode === state.mode) {
+            updateTimerDisplay(main);
+          } else {
+            renderFocusView(main);
+          }
+        } else {
+          if (lastPhase === 'idle') renderFocusView(main);
+          else updateTimerDisplay(main);
+        }
       } else {
-        renderFocusView(main);
+        updateTimerDisplay(main);
       }
       lastPhase = state.phase;
       lastMode = state.mode;

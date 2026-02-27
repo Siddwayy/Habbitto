@@ -25,6 +25,13 @@ import {
   setMode,
   formatSeconds,
 } from './timer.js';
+import { getLastSavedMinutes, stopAndResetPersistence } from './session-persistence.js';
+
+/** When set, Save button delegates to this (for cross-tab sync). */
+let saveClickHandler = null;
+export function setSaveClickHandler(fn) {
+  saveClickHandler = fn;
+}
 
 function escapeHtml(s) {
   const div = document.createElement('div');
@@ -495,9 +502,15 @@ export function renderFocusView(container) {
 
   if (saveBtn) saveBtn.addEventListener('click', () => {
     if (!confirm('End and save this focus session? Your time will be added to the habit.')) return;
+    if (saveClickHandler) {
+      saveClickHandler();
+      return;
+    }
     const elapsed = getElapsedWorkMinutes();
     const habitId = getTimerState().habitId;
-    if (habitId && elapsed > 0) addFocusToCompletion(habitId, elapsed);
+    const delta = Math.max(0, elapsed - getLastSavedMinutes());
+    if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+    stopAndResetPersistence();
     reset();
   });
 

@@ -13,6 +13,7 @@ let state = {
 };
 
 const listeners = [];
+let syncDelegate = null; // { isFollower, sendCommand }
 let onWorkCompleteCallback = null;
 let onSessionEndAlertCallback = null;
 
@@ -87,6 +88,11 @@ export function getTimerState() {
   return { ...state };
 }
 
+/** True if this tab has the timer interval running (owner tab). */
+export function isTimerRunning() {
+  return !!state.intervalId;
+}
+
 export function setDurations(workMinutes, breakMinutes) {
   state.workDuration = (workMinutes ?? 25) * 60;
   state.breakDuration = (breakMinutes ?? 5) * 60;
@@ -124,12 +130,54 @@ export function startBreak() {
   notify();
 }
 
+export function setSyncDelegate(delegate) {
+  syncDelegate = delegate;
+}
+
+/** Restore full state and optionally start the interval (for takeover). */
+export function restoreFromSnapshot(snapshot, startInterval = false) {
+  stopInterval();
+  if (!snapshot) return;
+  state.mode = snapshot.mode ?? state.mode;
+  state.phase = snapshot.phase ?? 'idle';
+  state.remainingSeconds = Math.max(0, Math.round(snapshot.remainingSeconds ?? 0));
+  state.workDuration = snapshot.workDuration ?? state.workDuration;
+  state.breakDuration = snapshot.breakDuration ?? state.breakDuration;
+  state.stopwatchSeconds = Math.max(0, Math.round(snapshot.stopwatchSeconds ?? 0));
+  state.habitId = snapshot.habitId ?? null;
+  if (startInterval && (state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch')) {
+    state.intervalId = setInterval(tick, 1000);
+  }
+  notify();
+}
+
+/** Update display state only (for follower tabs – no interval). */
+export function setDisplayState(snapshot) {
+  if (!snapshot) return;
+  state.mode = snapshot.mode ?? state.mode;
+  state.phase = snapshot.phase ?? state.phase;
+  state.remainingSeconds = Math.max(0, Math.round(snapshot.remainingSeconds ?? 0));
+  state.workDuration = snapshot.workDuration ?? state.workDuration;
+  state.breakDuration = snapshot.breakDuration ?? state.breakDuration;
+  state.stopwatchSeconds = Math.max(0, Math.round(snapshot.stopwatchSeconds ?? 0));
+  state.habitId = snapshot.habitId ?? state.habitId;
+  notify();
+}
+
 export function pause() {
+  if (syncDelegate?.isFollower?.()) {
+    syncDelegate.sendCommand('pause');
+    return;
+  }
   stopInterval();
   notify();
 }
 
 export function resume() {
+  if (syncDelegate?.isFollower?.()) {
+    syncDelegate.sendCommand('resume');
+    return;
+  }
   if (state.phase === 'stopwatch-paused') {
     state.phase = 'stopwatch';
     state.intervalId = setInterval(tick, 1000);
@@ -143,6 +191,10 @@ export function resume() {
 }
 
 export function reset() {
+  if (syncDelegate?.isFollower?.()) {
+    syncDelegate.sendCommand('reset');
+    return;
+  }
   stopInterval();
   state.phase = 'idle';
   state.remainingSeconds = 0;
@@ -158,6 +210,10 @@ export function startStopwatch() {
 }
 
 export function pauseStopwatch() {
+  if (syncDelegate?.isFollower?.()) {
+    syncDelegate.sendCommand('pause');
+    return;
+  }
   if (state.phase !== 'stopwatch') return;
   stopInterval();
   state.phase = 'stopwatch-paused';
