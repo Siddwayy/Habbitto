@@ -1072,6 +1072,41 @@ input:focus-visible,
   min-width: auto;
 }
 
+/* Profile edit at top with edit marker */
+.account-profile-top {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.account-field-edit {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.75rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.account-field-edit:last-of-type {
+  margin-bottom: 0.75rem;
+}
+
+.account-edit-marker {
+  grid-row: 1 / 2;
+  margin-top: 0.5rem;
+  color: var(--text-muted);
+}
+
+.account-field-edit label {
+  grid-column: 2;
+  margin-bottom: 0.5rem;
+}
+
+.account-field-edit input {
+  grid-column: 2;
+  margin-bottom: 0;
+}
+
 .account-info {
   display: flex;
   flex-direction: column;
@@ -1138,6 +1173,9 @@ input:focus-visible,
 
 .account-form .btn {
   margin-top: 0.25rem;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .account-form {
@@ -2246,7 +2284,8 @@ input:focus-visible,
   align-items: center;
   justify-content: flex-start;
   gap: 0.25rem;
-  width: 54px;
+  width: 68px;
+  min-width: 68px;
   min-height: 58px;
   flex-shrink: 0;
   padding: 0.4rem 0.35rem;
@@ -2281,6 +2320,7 @@ input:focus-visible,
 
 .habit-pick-cta {
   min-height: 58px;
+  min-width: 68px;
   border-style: dashed;
 }
 
@@ -2308,11 +2348,8 @@ input:focus-visible,
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  word-break: break-word;
-  min-height: 2em;
+  white-space: nowrap;
+  width: 100%;
   font-size: 0.6rem;
 }
 

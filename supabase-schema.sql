@@ -1,5 +1,9 @@
 -- Run this in your Supabase SQL Editor to create the tables.
 
+-- Note: User profile fields (full_name, nickname) are stored in auth.users
+-- via user_metadata (raw_user_meta_data), updated via supabase.auth.updateUser().
+-- No extra table needed.
+
 -- Habits table (per user)
 create table if not exists habits (
   id uuid primary key default gen_random_uuid(),

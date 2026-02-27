@@ -6,16 +6,19 @@ import { renderSettingsView } from './settings-ui.js';
 import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId, getHabitsList } from './habits.js';
 import { loadSessions, setUserId as setSessionsUserId, subscribeSessions } from './sessions.js';
 import { subscribeTimer, onWorkComplete, onSessionEndAlert, getTimerState, startWork, startStopwatch, pause, pauseStopwatch, resume, setDurations, reset } from './timer.js';
-import { getSession, onAuthStateChange, signOut, updatePassword } from './auth.js';
+import { getSession, onAuthStateChange, signOut, updatePassword, updateUserProfile } from './auth.js';
 import { supabase } from './supabase.js';
 import * as sessionEndSound from './session-end-sound.js';
 import { initTheme, toggleTheme, getTheme } from './theme.js';
 import { renderIcon, renderLogo } from './icons.js';
 
-function renderAccountModal(container, session, onClose, onLogout) {
+const editIcon = () => renderIcon('pen', 18);
+
+function renderAccountModal(container, session, onClose, onLogout, opts = {}) {
   const user = session?.user;
   const email = user?.email ?? '—';
-  const name = user?.user_metadata?.full_name || user?.user_metadata?.name || email;
+  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
+  const nickname = user?.user_metadata?.nickname || '';
   const userId = user?.id ?? '—';
   container.innerHTML = `
     <div class="modal-backdrop account-modal-backdrop"></div>
@@ -24,11 +27,21 @@ function renderAccountModal(container, session, onClose, onLogout) {
         <h2 class="modal-title">Account</h2>
         <button type="button" class="btn btn-ghost btn-icon btn-close-account" aria-label="Close">×</button>
       </div>
-      <div class="account-info">
-        <div class="account-field">
-          <span class="account-label">Name</span>
-          <span class="account-value">${escapeHtml(name)}</span>
+      <form id="account-profile-form" class="account-form account-profile-top">
+        <div class="account-field-edit">
+          <span class="account-edit-marker" aria-hidden="true">${editIcon()}</span>
+          <label for="account-full-name">Full name</label>
+          <input type="text" id="account-full-name" placeholder="Your full name" autocomplete="name" value="${escapeHtml(fullName)}" />
         </div>
+        <div class="account-field-edit">
+          <span class="account-edit-marker" aria-hidden="true">${editIcon()}</span>
+          <label for="account-nickname">Nickname</label>
+          <input type="text" id="account-nickname" placeholder="How we can call you" autocomplete="nickname" value="${escapeHtml(nickname)}" />
+        </div>
+        <p id="account-profile-message" class="auth-error" style="display:${opts.profileSaved ? 'block' : 'none'}">${opts.profileSaved ? 'Profile saved.' : ''}</p>
+        <button type="submit" class="btn btn-primary">Save profile</button>
+      </form>
+      <div class="account-info">
         <div class="account-field">
           <span class="account-label">Email</span>
           <span class="account-value">${escapeHtml(email)}</span>
@@ -52,6 +65,30 @@ function renderAccountModal(container, session, onClose, onLogout) {
   container.querySelector('.account-modal-backdrop').addEventListener('click', onClose);
   container.querySelector('.btn-close-account').addEventListener('click', onClose);
   container.querySelector('#account-logout').addEventListener('click', onLogout);
+
+  const profileForm = container.querySelector('#account-profile-form');
+  const profileMessage = container.querySelector('#account-profile-message');
+  profileForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fullNameVal = profileForm.querySelector('#account-full-name').value.trim();
+    const nicknameVal = profileForm.querySelector('#account-nickname').value.trim();
+    profileMessage.style.display = 'none';
+    try {
+      const { user: updatedUser } = await updateUserProfile(fullNameVal || null, nicknameVal || null);
+      const freshSession = { ...session, user: updatedUser };
+      renderAccountModal(container, freshSession, onClose, onLogout, { profileSaved: true });
+      const msg = container.querySelector('#account-profile-message');
+      if (msg) {
+        msg.textContent = 'Profile saved.';
+        msg.style.color = 'var(--success)';
+      }
+    } catch (err) {
+      profileMessage.textContent = err.message || 'Failed to save profile';
+      profileMessage.style.color = '';
+      profileMessage.style.display = 'block';
+    }
+  });
+
   const form = container.querySelector('#account-change-password');
   const messageEl = container.querySelector('#account-password-message');
   form.addEventListener('submit', async (e) => {
@@ -224,11 +261,14 @@ export async function initApp() {
         modal.setAttribute('aria-hidden', 'false');
       }
     });
-    if (accountBtn) accountBtn.addEventListener('click', () => {
+    if (accountBtn) accountBtn.addEventListener('click', async () => {
       const modal = document.getElementById('account-modal');
-      if (modal) renderAccountModal(modal, session, () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }, async () => { await signOut(); setUserId(null); setSessionsUserId(null); showAuth(); });
-      modal?.classList.add('open');
-      modal?.setAttribute('aria-hidden', 'false');
+      if (modal) {
+        const { data } = await getSession();
+        renderAccountModal(modal, data?.session ?? session, () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }, async () => { await signOut(); setUserId(null); setSessionsUserId(null); showAuth(); });
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
     });
     if (logoutBtn) logoutBtn.addEventListener('click', async () => {
       await signOut();

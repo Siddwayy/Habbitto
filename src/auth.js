@@ -37,6 +37,18 @@ export async function updatePassword(newPassword) {
   return data;
 }
 
+export async function updateUserProfile(fullName, nickname) {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { data, error } = await supabase.auth.updateUser({
+    data: {
+      full_name: fullName ?? null,
+      nickname: nickname ?? null,
+    },
+  });
+  if (error) throw error;
+  return data;
+}
+
 export function onAuthStateChange(callback) {
   if (!supabase) return () => {};
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

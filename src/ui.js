@@ -187,28 +187,31 @@ export function updateTimerDisplay(container) {
     }
   }
 
-  // Idle-only updates (duration, presets, message, habit picker, Start button) – no full re-render
-  if (state.phase === 'idle' && !isStopwatch) {
-    const workMins = state.workDuration / 60;
-    const presetBtns = container.querySelectorAll('.duration-preset-btn');
-    presetBtns.forEach((btn) => {
-      if (btn.dataset.custom) {
-        btn.classList.toggle('selected', !PRESET_MINUTES.includes(workMins));
-      } else {
-        const m = parseInt(btn.dataset.minutes, 10);
-        btn.classList.toggle('selected', workMins === m);
-      }
-    });
-    const msgEl = container.querySelector('.timer-duration-message');
-    const msg = getDurationMessage(workMins);
-    if (msgEl) {
-      if (msg) {
-        msgEl.textContent = msg;
-        msgEl.style.display = '';
-      } else {
-        msgEl.style.display = 'none';
+  // Idle-only updates – no full re-render
+  if (state.phase === 'idle') {
+    if (!isStopwatch) {
+      const workMins = state.workDuration / 60;
+      const presetBtns = container.querySelectorAll('.duration-preset-btn');
+      presetBtns.forEach((btn) => {
+        if (btn.dataset.custom) {
+          btn.classList.toggle('selected', !PRESET_MINUTES.includes(workMins));
+        } else {
+          const m = parseInt(btn.dataset.minutes, 10);
+          btn.classList.toggle('selected', workMins === m);
+        }
+      });
+      const msgEl = container.querySelector('.timer-duration-message');
+      const msg = getDurationMessage(workMins);
+      if (msgEl) {
+        if (msg) {
+          msgEl.textContent = msg;
+          msgEl.style.display = '';
+        } else {
+          msgEl.style.display = 'none';
+        }
       }
     }
+    // Habit picker & Start button – both focus and stopwatch
     const habitCards = container.querySelectorAll('.habit-pick-card:not(.habit-pick-cta)');
     habitCards.forEach((card) => {
       card.classList.toggle('selected', card.dataset.habitId === state.habitId);
@@ -304,16 +307,16 @@ export function renderFocusView(container) {
         ${msg ? `<p class="timer-duration-message">${escapeHtml(msg)}</p>` : ''}
         `;
         })() : ''}
+        <div class="timer-habit-area">
+          <p class="timer-habit-label">Select habit</p>
+          <div class="habit-picker" id="habit-picker"></div>
+        </div>
         <div class="timer-controls">
           ${state.phase === 'idle' ? `<button type="button" class="btn btn-primary btn-timer" id="timer-start" ${!state.habitId || !habits.some(h => h.id === state.habitId) ? 'disabled' : ''}>Start</button>` : `
           <button type="button" class="btn btn-timer ${isPaused(state) ? 'btn-timer-resume' : 'btn-timer-pause'}" id="timer-pause-resume">${isPaused(state) ? 'Resume' : 'Pause'}</button>
           <button type="button" class="btn btn-ghost btn-timer" id="timer-reset">Reset</button>
           <button type="button" class="btn btn-primary btn-timer" id="timer-save" ${!showSaveBtn(state) ? 'hidden' : ''}>Save</button>
           `}
-        </div>
-        <div class="timer-habit-area">
-          <p class="timer-habit-label">Select habit</p>
-          <div class="habit-picker" id="habit-picker"></div>
         </div>
       </div>
     </section>
