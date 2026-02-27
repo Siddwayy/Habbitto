@@ -383,8 +383,7 @@ export function renderFocusView(container) {
           <div class="time-spent-card" data-habit-id="${escapeHtml(h.id)}">
             <div class="time-spent-circle-wrap">
               <svg class="time-spent-streak-ring" viewBox="0 0 100 100" aria-hidden="true">
-                <circle class="time-spent-ring-bg" cx="50" cy="50" r="${RING_R}" fill="none" stroke-width="6"
-                  stroke-dasharray="${DASH} ${GAP}" />
+                <circle class="time-spent-ring-bg" cx="50" cy="50" r="${RING_R}" fill="none" stroke-width="6" />
                 <circle class="time-spent-ring-fill" cx="50" cy="50" r="${RING_R}" fill="none" stroke-width="6"
                   stroke-dasharray="${DASH} ${GAP}" stroke-dashoffset="${dashOffset}" />
               </svg>

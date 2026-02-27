@@ -2149,6 +2149,7 @@ input:focus-visible,
 }
 
 .time-spent-grid-scroll {
+  width: 100%;
   max-height: 14rem;
   overflow-y: auto;
   overflow-x: hidden;
@@ -2157,10 +2158,11 @@ input:focus-visible,
 }
 
 .time-spent-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: var(--space-lg);
-  justify-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--space-sm);
 }
 
 .time-spent-card {
