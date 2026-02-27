@@ -368,7 +368,12 @@ export function renderFocusView(container) {
       const SEG_LEN = CIRCUMFERENCE / STREAK_SEGMENTS;
       const DASH = SEG_LEN * 0.72;
       const GAP = SEG_LEN * 0.28;
-      const cards = habits.map((h) => {
+      const habitsSorted = [...habits].sort((a, b) => {
+        const minsA = timeSpent[a.id] || 0;
+        const minsB = timeSpent[b.id] || 0;
+        return minsB - minsA; // descending: most to least
+      });
+      const cards = habitsSorted.map((h) => {
         const mins = timeSpent[h.id] || 0;
         const streakRaw = getHabitStreak(h.id);
         const streak = Math.min(streakRaw, STREAK_SEGMENTS);
