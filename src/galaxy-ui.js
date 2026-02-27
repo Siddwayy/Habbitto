@@ -45,26 +45,29 @@ function formatSessionDate(dateStr) {
 
 export function renderGalaxyView(container, onClose) {
   const sessions = getSessionsForGalaxy();
-  const stars = computeStars(sessions);
-  const lines = computeConstellationLines(stars);
   const streak = computeStreak(sessions);
   const ms = getMilestone(sessions.length);
   const presets = computeConstellationProgress(sessions);
+  let selectedPresetId = null;
 
-  const svgStars = stars
-    .map(
-      (s, i) =>
-        `<circle class="galaxy-star ${i === 0 ? 'home-star' : ''}" cx="${s.x}%" cy="${s.y}%" r="${1.5 * s.size}" data-index="${i}" />`
-    )
-    .join('');
-
-  const svgLines = lines
-    .map((l) => {
-      const a = stars[l.from];
-      const b = stars[l.to];
-      return `<line class="galaxy-line" x1="${a.x}%" y1="${a.y}%" x2="${b.x}%" y2="${b.y}%" />`;
-    })
-    .join('');
+  function updateCanvas(qualifyingSessions) {
+    const stars = computeStars(qualifyingSessions);
+    const lines = computeConstellationLines(stars);
+    const svgStars = stars
+      .map((s, i) => `<circle class="galaxy-star ${i === 0 ? 'home-star' : ''}" cx="${s.x}%" cy="${s.y}%" r="${1.5 * s.size}" data-index="${i}" />`)
+      .join('');
+    const svgLines = lines
+      .map((l) => {
+        const a = stars[l.from];
+        const b = stars[l.to];
+        return `<line class="galaxy-line" x1="${a.x}%" y1="${a.y}%" x2="${b.x}%" y2="${b.y}%" />`;
+      })
+      .join('');
+    const linesEl = container.querySelector('.galaxy-lines');
+    const starsEl = container.querySelector('.galaxy-stars');
+    if (linesEl) linesEl.innerHTML = svgLines;
+    if (starsEl) starsEl.innerHTML = svgStars;
+  }
 
   const nebulaClass = ms.nebula ? `galaxy-nebula galaxy-nebula-${ms.nebula}` : '';
 
@@ -113,13 +116,13 @@ export function renderGalaxyView(container, onClose) {
             </filter>
           </defs>
           <circle cx="50" cy="50" r="45" fill="url(#galaxy-glow)" class="galaxy-center-glow" />
-          <g class="galaxy-lines">${svgLines}</g>
-          <g class="galaxy-stars">${svgStars}</g>
+          <g class="galaxy-lines"></g>
+          <g class="galaxy-stars"></g>
         </svg>
       </div>
       <div class="galaxy-presets">
         ${presets.map((p) => `
-          <button type="button" class="galaxy-preset-card galaxy-preset-${p.id} ${p.completed ? 'completed' : ''}" data-preset-id="${p.id}" title="Click for details">
+          <button type="button" class="galaxy-preset-card galaxy-preset-${p.id} ${p.completed ? 'completed' : ''} ${selectedPresetId === p.id ? 'selected' : ''}" data-preset-id="${p.id}" title="Click to view stars">
             <span class="galaxy-preset-visual">
               <svg class="galaxy-constellation-svg" viewBox="0 0 40 40" preserveAspectRatio="xMidYMid meet">${CONSTELLATION_SVGS[p.id] || ''}</svg>
             </span>
@@ -171,9 +174,19 @@ export function renderGalaxyView(container, onClose) {
     btn.addEventListener('click', () => {
       const id = btn.dataset.presetId;
       const preset = presets.find((p) => p.id === id);
-      if (preset) openDetail(preset);
+      if (!preset) return;
+      selectedPresetId = id;
+      btn.classList.add('selected');
+      container.querySelectorAll('.galaxy-preset-card').forEach((b) => {
+        if (b !== btn) b.classList.remove('selected');
+      });
+      updateCanvas(preset.qualifyingSessions || []);
+      openDetail(preset);
     });
   });
+
+  // Initial state: no stars until constellation is clicked
+  updateCanvas([]);
   backdrop.addEventListener('click', closeDetail);
   panel.querySelector('.galaxy-detail-close')?.addEventListener('click', closeDetail);
   document.addEventListener('keydown', (e) => {

@@ -254,9 +254,10 @@ export async function initApp() {
         const elapsed = getElapsedWorkMinutes();
         const habitId = getSessionHabitId();
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+        const mode = getTimerState().mode ?? 'focus';
         if (habitId) {
           if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed });
+          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
         }
         persistence.stopPeriodicSave();
         sync.stopOwnerHeartbeat();
@@ -273,9 +274,10 @@ export async function initApp() {
         const elapsed = getElapsedWorkMinutes();
         const habitId = getSessionHabitId();
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+        const mode = getTimerState().mode ?? 'focus';
         if (habitId) {
           if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed });
+          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
         }
         persistence.stopPeriodicSave();
         sync.stopOwnerHeartbeat();
@@ -286,8 +288,9 @@ export async function initApp() {
 
     onWorkComplete((habitId, totalMinutes) => {
       const delta = totalMinutes - persistence.getLastSavedMinutes();
+      const mode = getTimerState().mode ?? 'focus';
       if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-      if (totalMinutes > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: totalMinutes });
+      if (totalMinutes > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: totalMinutes, sessionMode: mode });
       persistence.stopPeriodicSave();
       sync.stopOwnerHeartbeat();
       sync.stopCommandPolling();
@@ -521,9 +524,10 @@ export async function initApp() {
         const elapsed = getElapsedWorkMinutes();
         const habitId = getSessionHabitId();
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+        const mode = getTimerState().mode ?? 'focus';
         if (habitId) {
           if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed });
+          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
         }
         persistence.stopPeriodicSave();
         sync.stopOwnerHeartbeat();
@@ -540,9 +544,10 @@ export async function initApp() {
         const elapsed = getElapsedWorkMinutes();
         const habitId = getSessionHabitId();
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
+        const mode = getTimerState().mode ?? 'focus';
         if (habitId) {
           if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed });
+          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed, sessionMode: mode });
         }
         persistence.stopPeriodicSave();
         sync.stopOwnerHeartbeat();
@@ -553,8 +558,9 @@ export async function initApp() {
 
     onWorkComplete((habitId, totalMinutes) => {
       const delta = totalMinutes - persistence.getLastSavedMinutes();
+      const mode = getTimerState().mode ?? 'focus';
       if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
-      if (totalMinutes > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: totalMinutes });
+      if (totalMinutes > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: totalMinutes, sessionMode: mode });
       persistence.stopPeriodicSave();
       sync.stopOwnerHeartbeat();
       sync.stopCommandPolling();

@@ -197,17 +197,17 @@ export async function toggleCompletionToday(habitId, focusMinutes = null) {
  * @param {string} habitId
  * @param {number} focusMinutes - delta for completions (to avoid double-counting)
  * @param {string|null} date - YYYY-MM-DD, defaults to today
- * @param {{ recordSession?: boolean, sessionMinutes?: number }} options - recordSession: add to sessions (default true). sessionMinutes: use this for session (e.g. full block total); if omitted, uses focusMinutes.
+ * @param {{ recordSession?: boolean, sessionMinutes?: number, sessionMode?: 'focus'|'stopwatch' }} options - recordSession: add to sessions (default true). sessionMinutes: use this for session. sessionMode: 'focus' or 'stopwatch'; only focus counts for constellations.
  */
 export async function addFocusToCompletion(habitId, focusMinutes, date = null, options = {}) {
-  const { recordSession = true, sessionMinutes } = options;
+  const { recordSession = true, sessionMinutes, sessionMode = 'focus' } = options;
   const minsForSession = sessionMinutes ?? focusMinutes;
   const today = date || getTodayKey();
   if (userId) {
     try {
       await db.upsertCompletion(userId, habitId, today, focusMinutes);
       completionsCache = await db.fetchCompletions(userId);
-      if (recordSession) await addSession(habitId, today, minsForSession);
+      if (recordSession) await addSession(habitId, today, minsForSession, { mode: sessionMode });
       notify();
       return;
     } catch (err) {
@@ -227,7 +227,7 @@ export async function addFocusToCompletion(habitId, focusMinutes, date = null, o
     completions = [...completions, { habitId, date: today, focusMinutes }];
   }
   setCompletions(completions);
-  if (recordSession) addSession(habitId, today, minsForSession);
+  if (recordSession) addSession(habitId, today, minsForSession, { mode: sessionMode });
   notify();
 }
 

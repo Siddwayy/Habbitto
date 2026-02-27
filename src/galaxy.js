@@ -18,10 +18,9 @@ function seededRandom(seed) {
   return x - Math.floor(x);
 }
 
-/** Star size/brightness: 30m = 1, 90m = 3 (supergiant) */
-function starScale(focusMinutes) {
-  const m = Math.min(90, Math.max(30, focusMinutes || 30));
-  return 0.5 + (m / 60); // 30m -> 1, 60m -> 1.5, 90m -> 2
+/** Each session = 1 star, uniform size. */
+function starScale() {
+  return 1;
 }
 
 /** Compute star positions (deterministic from date + habitId) */
@@ -30,14 +29,15 @@ export function computeStars(sessions) {
   const centerY = 50;
   const spread = 35;
   return sessions.map((s, i) => {
+    const mins = s.focusMinutes || 30;
     const seed = hash(`${s.date}-${s.habitId}-${i}`);
     const angle = seededRandom(seed) * Math.PI * 2;
     const r = 5 + seededRandom(seed + 1) * spread;
     return {
       x: centerX + Math.cos(angle) * r,
       y: centerY + Math.sin(angle) * r,
-      size: starScale(s.focusMinutes),
-      focusMinutes: s.focusMinutes || 30,
+      size: starScale(),
+      focusMinutes: mins,
       date: s.date,
       habitId: s.habitId,
       index: i,
@@ -101,17 +101,28 @@ export function getMilestone(sessionCount) {
   return { tier: 1, nebula: null, label: 'Stars emerging' };
 }
 
-/** Real constellations: complete X sessions of Y mins each. Each session counts toward all constellations it qualifies for. */
+/** 25–44 = Orion, 45–74 = Ursa Major, 75+ = Cassiopeia. Focus-timer only. */
 export const CONSTELLATION_PRESETS = [
-  { id: 'orion', name: 'Orion', subtitle: 'The Hunter', difficulty: 'Easy', sessions: 8, minMinutes: 30, description: '8 sessions × 30 min' },
-  { id: 'ursa-major', name: 'Ursa Major', subtitle: 'The Great Bear', difficulty: 'Medium', sessions: 7, minMinutes: 60, description: '7 sessions × 60 min' },
-  { id: 'cassiopeia', name: 'Cassiopeia', subtitle: 'The Queen', difficulty: 'Hard', sessions: 8, minMinutes: 90, description: '8 sessions × 90 min' },
+  { id: 'orion', name: 'Orion', subtitle: 'The Hunter', difficulty: 'Easy', sessions: 8, minMinutes: 25, maxMinutes: 45, description: '8 sessions × 30 min (focus timer)' },
+  { id: 'ursa-major', name: 'Ursa Major', subtitle: 'The Great Bear', difficulty: 'Medium', sessions: 7, minMinutes: 45, maxMinutes: 75, description: '7 sessions × 60 min (focus timer)' },
+  { id: 'cassiopeia', name: 'Cassiopeia', subtitle: 'The Queen', difficulty: 'Hard', sessions: 8, minMinutes: 75, description: '8 sessions × 90 min (focus timer)' },
 ];
 
-/** Compute progress for each constellation. Sessions count toward constellations they meet (e.g. 90 min counts for all three). */
+/** 30 min = Orion only (25-44), 60 min = Ursa Major only (45-74), 90 min = Cassiopeia only (75+). Focus-timer sessions only. */
+function qualifiesForConstellation(session, minMinutes, maxMinutes) {
+  const mins = session.focusMinutes || 0;
+  if (mins < minMinutes) return false;
+  if (maxMinutes != null && mins >= maxMinutes) return false;
+  if (session.mode === 'stopwatch') return false;
+  return true;
+}
+
+/** Compute progress for each constellation. Each session counts for exactly one tier. Focus-timer only. */
 export function computeConstellationProgress(sessions) {
   return CONSTELLATION_PRESETS.map((preset) => {
-    const qualifying = sessions.filter((s) => (s.focusMinutes || 0) >= preset.minMinutes);
+    const minMinutes = preset.minMinutes;
+    const maxMinutes = preset.maxMinutes;
+    const qualifying = sessions.filter((s) => qualifiesForConstellation(s, minMinutes, maxMinutes));
     const count = qualifying.length;
     const completed = count >= preset.sessions;
     return {

@@ -77,20 +77,22 @@ export async function fetchSessions(userId) {
     habitId: row.habit_id,
     date: row.date,
     focusMinutes: row.focus_minutes || 0,
+    mode: row.mode ?? 'focus',
     createdAt: row.created_at,
   }));
 }
 
-export async function insertSession(userId, habitId, date, focusMinutes) {
+export async function insertSession(userId, habitId, date, focusMinutes, mode = 'focus') {
   if (!supabase || !userId) return null;
+  const payload = {
+    user_id: userId,
+    habit_id: habitId,
+    date,
+    focus_minutes: focusMinutes,
+  };
   const { error } = await supabase
     .from('sessions')
-    .insert({
-      user_id: userId,
-      habit_id: habitId,
-      date,
-      focus_minutes: focusMinutes,
-    });
+    .insert(payload);
   if (error) {
     console.warn('insertSession failed (table may not exist):', error.message);
     return null;

@@ -21,10 +21,15 @@ create table if not exists sessions (
   habit_id uuid references habits(id) on delete cascade not null,
   date text not null,
   focus_minutes int not null default 0,
+  mode text default 'focus' check (mode in ('focus', 'stopwatch')),
   created_at timestamptz default now()
 );
 
+-- Migration for existing DBs: add mode column
+alter table sessions add column if not exists mode text default 'focus';
+
 alter table sessions enable row level security;
+drop policy if exists "Users can manage own sessions" on sessions;
 create policy "Users can manage own sessions"
   on sessions for all
   using (auth.uid() = user_id)
@@ -47,12 +52,14 @@ create unique index if not exists completions_user_habit_date_unique
 alter table habits enable row level security;
 alter table completions enable row level security;
 
--- Policies: users can only access their own data
+-- Policies: users can only access their own data (drop first so script is re-runnable)
+drop policy if exists "Users can manage own habits" on habits;
 create policy "Users can manage own habits"
   on habits for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can manage own completions" on completions;
 create policy "Users can manage own completions"
   on completions for all
   using (auth.uid() = user_id)

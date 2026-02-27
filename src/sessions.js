@@ -31,10 +31,12 @@ export function getSessionsList() {
   return userId ? sessionsCache : getSessions();
 }
 
-export async function addSession(habitId, date, focusMinutes) {
+/** @param {'focus'|'stopwatch'} mode - Only 'focus' counts for constellation progress. */
+export async function addSession(habitId, date, focusMinutes, options = {}) {
+  const mode = options.mode ?? 'focus';
   if (userId) {
     try {
-      await db.insertSession(userId, habitId, date, focusMinutes);
+      await db.insertSession(userId, habitId, date, focusMinutes, mode);
       sessionsCache = await db.fetchSessions(userId);
       notify();
       return;
@@ -44,7 +46,7 @@ export async function addSession(habitId, date, focusMinutes) {
   } else {
     const sessions = getSessions();
     const id = crypto.randomUUID?.() ?? `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    sessions.push({ id, habitId, date, focusMinutes, createdAt: new Date().toISOString() });
+    sessions.push({ id, habitId, date, focusMinutes, mode, createdAt: new Date().toISOString() });
     setSessions(sessions);
     sessionsCache = sessions;
     notify();
