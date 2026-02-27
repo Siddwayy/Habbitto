@@ -228,7 +228,8 @@ export async function initApp() {
 
     const currentUserId = session?.user?.id ?? 'local';
     const getUserId = () => session?.user?.id ?? 'local';
-    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusToCompletion, getTodayKey, getUserId);
+    const addFocusForCheckpoint = (habitId, minutes) => addFocusToCompletion(habitId, minutes, null, { recordSession: false });
+    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusForCheckpoint, getTodayKey, getUserId);
     persistenceTeardown = () => persistence.teardown?.();
     const sync = setupLiveSessionSync(getTimerState, currentUserId, {
       onStorageUpdate: (display) =>
@@ -252,7 +253,10 @@ export async function initApp() {
         const elapsed = getElapsedWorkMinutes();
         const habitId = getTimerState().habitId;
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
-        if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+        if (habitId) {
+          if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
+          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed });
+        }
         persistence.stopPeriodicSave();
         sync.stopOwnerHeartbeat();
         sync.stopCommandPolling();
@@ -268,7 +272,10 @@ export async function initApp() {
         const elapsed = getElapsedWorkMinutes();
         const habitId = getTimerState().habitId;
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
-        if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+        if (habitId) {
+          if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
+          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed });
+        }
         persistence.stopPeriodicSave();
         sync.stopOwnerHeartbeat();
         sync.stopCommandPolling();
@@ -278,7 +285,8 @@ export async function initApp() {
 
     onWorkComplete((habitId, totalMinutes) => {
       const delta = totalMinutes - persistence.getLastSavedMinutes();
-      if (delta > 0) addFocusToCompletion(habitId, delta);
+      if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
+      if (totalMinutes > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: totalMinutes });
       persistence.stopPeriodicSave();
       sync.stopOwnerHeartbeat();
       sync.stopCommandPolling();
@@ -487,7 +495,8 @@ export async function initApp() {
 
     const currentUserId = 'local';
     const getUserId = () => 'local';
-    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusToCompletion, getTodayKey, getUserId);
+    const addFocusForCheckpoint = (habitId, minutes) => addFocusToCompletion(habitId, minutes, null, { recordSession: false });
+    const persistence = setupSessionPersistence(getTimerState, getElapsedWorkMinutes, addFocusForCheckpoint, getTodayKey, getUserId);
     persistenceTeardown = () => persistence.teardown?.();
     const sync = setupLiveSessionSync(getTimerState, currentUserId, {
       onStorageUpdate: (display) =>
@@ -511,7 +520,10 @@ export async function initApp() {
         const elapsed = getElapsedWorkMinutes();
         const habitId = getTimerState().habitId;
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
-        if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+        if (habitId) {
+          if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
+          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed });
+        }
         persistence.stopPeriodicSave();
         sync.stopOwnerHeartbeat();
         sync.stopCommandPolling();
@@ -527,7 +539,10 @@ export async function initApp() {
         const elapsed = getElapsedWorkMinutes();
         const habitId = getTimerState().habitId;
         const delta = Math.max(0, elapsed - persistence.getLastSavedMinutes());
-        if (habitId && delta > 0) addFocusToCompletion(habitId, delta);
+        if (habitId) {
+          if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
+          if (elapsed > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: elapsed });
+        }
         persistence.stopPeriodicSave();
         sync.stopOwnerHeartbeat();
         sync.stopCommandPolling();
@@ -537,7 +552,8 @@ export async function initApp() {
 
     onWorkComplete((habitId, totalMinutes) => {
       const delta = totalMinutes - persistence.getLastSavedMinutes();
-      if (delta > 0) addFocusToCompletion(habitId, delta);
+      if (delta > 0) addFocusToCompletion(habitId, delta, null, { recordSession: false });
+      if (totalMinutes > 0) addFocusToCompletion(habitId, 0, null, { recordSession: true, sessionMinutes: totalMinutes });
       persistence.stopPeriodicSave();
       sync.stopOwnerHeartbeat();
       sync.stopCommandPolling();
