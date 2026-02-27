@@ -36,14 +36,6 @@ function habitIconHtml(iconName) {
   return renderIcon(iconName || 'book', 22);
 }
 
-function formatTimeSpent(minutes) {
-  if (!minutes || minutes === 0) return '0m';
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
-}
-
 function formatTimeSpentHours(minutes) {
   if (!minutes || minutes === 0) return '0h';
   const h = Math.round(minutes / 60);
@@ -269,6 +261,8 @@ export function renderFocusView(container) {
       ? ((state.phase === 'work' || state.phase === 'break') && !state.intervalId ? 'Paused' : state.phase === 'work' ? 'Focus' : 'Break')
       : 'Ready';
   const timerCardClass = state.phase !== 'idle' && state.phase !== 'stopwatch-paused' ? 'timer-card running' : 'timer-card';
+  const isTimerActive = state.phase === 'work' || state.phase === 'break' || state.phase === 'stopwatch' || state.phase === 'stopwatch-paused';
+  container.parentElement?.classList.toggle('focus-view-active', isTimerActive);
   const habitsDone = habits.filter((h) => isCompletedToday(h.id)).length;
   const habitsTotal = habits.length;
   const habitsProgress = habitsTotal > 0 ? `${habitsDone} of ${habitsTotal} done` : '';
@@ -362,45 +356,28 @@ export function renderFocusView(container) {
         contentEl.innerHTML = '<p class="time-spent-empty">Add habits to track time spent.</p>';
         return;
       }
-      const STREAK_SEGMENTS = 30;
-      const RING_R = 28;
-      const CIRCUMFERENCE = 2 * Math.PI * RING_R;
-      const SEG_LEN = CIRCUMFERENCE / STREAK_SEGMENTS;
-      const DASH = SEG_LEN * 0.72;
-      const GAP = SEG_LEN * 0.28;
       const habitsSorted = [...habits].sort((a, b) => {
         const minsA = timeSpent[a.id] || 0;
         const minsB = timeSpent[b.id] || 0;
         return minsB - minsA; // descending: most to least
       });
-      const cards = habitsSorted.map((h) => {
+      const makeBarRow = (h) => {
         const mins = timeSpent[h.id] || 0;
         const streakRaw = getHabitStreak(h.id);
-        const streak = Math.min(streakRaw, STREAK_SEGMENTS);
-        const dashOffset = CIRCUMFERENCE - streak * SEG_LEN;
-        const streakLabel = streakRaw > 0 ? `<span class="time-spent-streak-edge" title="${streakRaw} day streak">${streakRaw}</span>` : '';
         return `
-          <div class="time-spent-card" data-habit-id="${escapeHtml(h.id)}">
-            <div class="time-spent-circle-wrap">
-              <svg class="time-spent-streak-ring" viewBox="0 0 100 100" aria-hidden="true">
-                <circle class="time-spent-ring-bg" cx="50" cy="50" r="${RING_R}" fill="none" stroke-width="6" />
-                <circle class="time-spent-ring-fill" cx="50" cy="50" r="${RING_R}" fill="none" stroke-width="6"
-                  stroke-dasharray="${DASH} ${GAP}" stroke-dashoffset="${dashOffset}" />
-              </svg>
-              <div class="time-spent-inner">
-                <span class="time-spent-hours">${escapeHtml(formatTimeSpentForHabit(mins))}</span>
-              </div>
-              ${streakLabel}
-            </div>
-            <span class="time-spent-name">${escapeHtml(h.name)}</span>
+          <div class="time-spent-bar-row" data-habit-id="${escapeHtml(h.id)}">
+            <span class="time-spent-bar-icon">${habitIconHtml(h.icon)}</span>
+            <span class="time-spent-bar-name">${escapeHtml(h.name)}</span>
+            <span class="time-spent-bar-time-badge" title="${mins} min today">${escapeHtml(formatTimeSpentForHabit(mins))}</span>
+            ${streakRaw > 0 ? `<span class="time-spent-bar-streak" title="${streakRaw} day streak">${renderIcon('flame', 12)} ${streakRaw}</span>` : ''}
           </div>
         `;
-      }).join('');
+      };
+
+      const barRows = habitsSorted.map(makeBarRow).join('');
       contentEl.innerHTML = `
-        <div class="time-spent-circles-container">
-          <div class="time-spent-grid-scroll">
-            <div class="time-spent-grid">${cards}</div>
-          </div>
+        <div class="time-spent-bars-container">
+          <div class="time-spent-bars-list">${barRows}</div>
         </div>
       `;
     } else {
