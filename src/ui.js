@@ -46,8 +46,37 @@ function formatTimeSpent(minutes) {
 
 function formatTimeSpentHours(minutes) {
   if (!minutes || minutes === 0) return '0h';
-  const h = minutes / 60;
-  return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`;
+  const h = Math.round(minutes / 60);
+  return `${h}h`;
+}
+
+function formatTimeSpentMinutes(minutes) {
+  if (!minutes || minutes === 0) return '0m';
+  return `${Math.round(minutes)}m`;
+}
+
+const TIME_DISPLAY_KEY = 'habbitto_time_display';
+
+export function getTimeDisplayFormat() {
+  try {
+    const stored = localStorage.getItem(TIME_DISPLAY_KEY);
+    return stored === 'minutes' ? 'minutes' : 'hours';
+  } catch {
+    return 'hours';
+  }
+}
+
+export function setTimeDisplayFormat(format) {
+  if (format !== 'hours' && format !== 'minutes') return;
+  try {
+    localStorage.setItem(TIME_DISPLAY_KEY, format);
+  } catch (_) {}
+}
+
+function formatTimeSpentForHabit(minutes) {
+  return getTimeDisplayFormat() === 'minutes'
+    ? formatTimeSpentMinutes(minutes)
+    : formatTimeSpentHours(minutes);
 }
 
 const LAST_DURATION_KEY = 'habbitto_last_duration';
@@ -352,7 +381,7 @@ export function renderFocusView(container) {
                   stroke-dasharray="${DASH} ${GAP}" stroke-dashoffset="${dashOffset}" />
               </svg>
               <div class="time-spent-inner">
-                <span class="time-spent-hours">${escapeHtml(formatTimeSpentHours(mins))}</span>
+                <span class="time-spent-hours">${escapeHtml(formatTimeSpentForHabit(mins))}</span>
               </div>
               ${streakLabel}
             </div>
@@ -389,7 +418,10 @@ export function renderFocusView(container) {
         const isZero = d.totalMinutes === 0;
         if (isZero) barHeight = 2;
         const fullLabel = dt.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
-        parts.push(`<div class="daily-bar-wrap" title="${fullLabel}: ${formatTimeSpent(d.totalMinutes)}">
+        const displayTime = getTimeDisplayFormat() === 'minutes'
+          ? formatTimeSpentMinutes(d.totalMinutes)
+          : formatTimeSpentHours(d.totalMinutes);
+        parts.push(`<div class="daily-bar-wrap" title="${fullLabel}: ${displayTime}">
           <div class="daily-bar ${isZero ? 'daily-bar-zero' : ''}" style="height: ${barHeight}px"></div>
           <span class="daily-bar-label">${dt.getDate()}</span>
         </div>`);

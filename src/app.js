@@ -2,6 +2,7 @@ import { renderFocusView, updateTimerDisplay } from './ui.js';
 import { renderAuthView } from './auth-ui.js';
 import { renderGalaxyView } from './galaxy-ui.js';
 import { renderGuideView } from './guide-ui.js';
+import { renderSettingsView } from './settings-ui.js';
 import { loadHabits, subscribeHabits, addFocusToCompletion, setUserId, getHabitsList } from './habits.js';
 import { loadSessions, setUserId as setSessionsUserId, subscribeSessions } from './sessions.js';
 import { subscribeTimer, onWorkComplete, onSessionEndAlert, getTimerState, startWork, startStopwatch, pause, pauseStopwatch, resume, setDurations, reset } from './timer.js';
@@ -154,6 +155,7 @@ export async function initApp() {
         <header class="app-header">
           <div class="header-buttons-left">
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
+            <button type="button" class="btn btn-settings" id="btn-settings">Settings</button>
             <button type="button" class="btn btn-account" id="btn-account">Account</button>
           </div>
           <div class="header-buttons-right">
@@ -165,6 +167,7 @@ export async function initApp() {
       </div>
       <main class="focus-view" id="focus-view"></main>
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
+      <div id="settings-modal" class="modal settings-modal" aria-hidden="true"></div>
       <div id="account-modal" class="modal account-modal" aria-hidden="true"></div>
       <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
       <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
@@ -196,6 +199,7 @@ export async function initApp() {
       modal.setAttribute('aria-hidden', 'false');
     });
     const guideBtn = app.querySelector('#btn-guide');
+    const settingsBtn = app.querySelector('#btn-settings');
     const accountBtn = app.querySelector('#btn-account');
     const logoutBtn = app.querySelector('#btn-logout');
     if (guideBtn) guideBtn.addEventListener('click', () => {
@@ -205,6 +209,17 @@ export async function initApp() {
           modal.classList.remove('open');
           modal.setAttribute('aria-hidden', 'true');
         });
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+    });
+    if (settingsBtn) settingsBtn.addEventListener('click', () => {
+      const modal = document.getElementById('settings-modal');
+      if (modal) {
+        renderSettingsView(modal, () => {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }, () => renderFocusView(main));
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
       }
@@ -319,6 +334,7 @@ export async function initApp() {
         <header class="app-header">
           <div class="header-buttons-left">
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
+            <button type="button" class="btn btn-settings" id="btn-settings">Settings</button>
           </div>
           <div class="header-buttons-right">
             <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
@@ -328,6 +344,7 @@ export async function initApp() {
       </div>
       <main class="focus-view" id="focus-view"></main>
       <div id="guide-modal" class="modal guide-modal" aria-hidden="true"></div>
+      <div id="settings-modal" class="modal settings-modal" aria-hidden="true"></div>
       <div id="session-end-modal" class="modal session-end-modal" aria-hidden="true"></div>
       <div id="galaxy-overlay" class="galaxy-overlay-wrap" aria-hidden="true"></div>
     `;
@@ -358,6 +375,7 @@ export async function initApp() {
       modal.setAttribute('aria-hidden', 'false');
     });
     const guideBtn = app.querySelector('#btn-guide');
+    const settingsBtn = app.querySelector('#btn-settings');
     const galaxyBtn = app.querySelector('#btn-galaxy');
     if (guideBtn) guideBtn.addEventListener('click', () => {
       const modal = document.getElementById('guide-modal');
@@ -366,6 +384,17 @@ export async function initApp() {
           modal.classList.remove('open');
           modal.setAttribute('aria-hidden', 'true');
         });
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+    });
+    if (settingsBtn) settingsBtn.addEventListener('click', () => {
+      const modal = document.getElementById('settings-modal');
+      if (modal) {
+        renderSettingsView(modal, () => {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }, () => renderFocusView(main));
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
       }
