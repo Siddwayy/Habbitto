@@ -4,7 +4,8 @@
 **Habit tracker with a built-in focus timer and stopwatch. Build habits one session at a time.**-https://habbitto.netlify.app/
 
 ---
-<img width="1044" height="1243" alt="image" src="https://github.com/user-attachments/assets/bbf48555-4844-4218-8455-464bf0673385" />
+<img width="815" height="1294" alt="image" src="https://github.com/user-attachments/assets/e16044ce-75bf-48c2-b7ec-4aac96cc85d2" />
+
 
 
 ## Overview
