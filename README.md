@@ -17,10 +17,22 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 ## Features
 
 - **Auth** — Email/password sign up and login via Supabase
+- <img width="441" height="510" alt="image" src="https://github.com/user-attachments/assets/f59026d5-7d59-4334-a06d-1f1560a64601" />
+
 - **Habit tracker** — Custom habits, icon picker, edit/delete, mark done for the day
+- <img width="791" height="587" alt="image" src="https://github.com/user-attachments/assets/e18d1f95-2ac0-4eb1-9ffd-9d0dd77d8e16" />
+
 - **Focus timer** — Preset durations (30, 45, 60, 75, 90 min), custom duration, circular progress, optional break phase
+- <img width="708" height="720" alt="image" src="https://github.com/user-attachments/assets/d3bfd58e-6970-4e6d-8d0b-81a3d60d2c9b" />
+
 - **Stopwatch** — Free-form timing with save to habit
+- <img width="719" height="664" alt="image" src="https://github.com/user-attachments/assets/c86c4ce7-2b0a-4ad6-bdc7-7adfacf45a80" />
+
 - **Time & streaks** — Time spent per habit, daily completions, consecutive-day streak counter
+- <img width="760" height="275" alt="image" src="https://github.com/user-attachments/assets/1a4126d2-204f-46a3-969f-240074443dc0" />
+-<img width="754" height="287" alt="image" src="https://github.com/user-attachments/assets/2dfe0edb-43f6-4b22-ac05-7b11c1f6a132" />
+
+
 - **Session-end flow** — Congratulatory dialog and optional sound when the focus timer finishes
 - **Guide** — In-app “How it works” with simple steps and icons
 - **Shortcuts** — Space to start/pause/resume; keys 1–5 for duration presets when idle
