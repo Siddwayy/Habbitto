@@ -2423,6 +2423,15 @@ input:focus-visible,
   filter: brightness(1.1);
 }
 
+.daily-bar-time {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-height: 1em;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
 .daily-bar-label {
   font-size: 0.65rem;
   font-weight: 700;

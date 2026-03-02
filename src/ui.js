@@ -46,8 +46,8 @@ function habitIconHtml(iconName) {
 
 function formatTimeSpentHours(minutes) {
   if (!minutes || minutes === 0) return '0h';
-  const h = Math.round(minutes / 60);
-  return `${h}h`;
+  const h = minutes / 60;
+  return h === Math.floor(h) ? `${h}h` : `${h.toFixed(1)}h`;
 }
 
 function formatTimeSpentMinutes(minutes) {
@@ -377,7 +377,7 @@ export function renderFocusView(container) {
             <span class="time-spent-bar-icon">${habitIconHtml(h.icon)}</span>
             <span class="time-spent-bar-name">${escapeHtml(h.name)}</span>
             <span class="time-spent-bar-time-badge" title="${mins} min today">${escapeHtml(formatTimeSpentForHabit(mins))}</span>
-            ${streakRaw > 0 ? `<span class="time-spent-bar-streak" title="${streakRaw} day streak">${renderIcon('flame', 12)} ${streakRaw}</span>` : ''}
+            ${streakRaw > 0 ? `<span class="time-spent-bar-streak" title="${streakRaw} day streak">⚡ ${streakRaw}</span>` : ''}
           </div>
         `;
       };
@@ -414,6 +414,7 @@ export function renderFocusView(container) {
           ? formatTimeSpentMinutes(d.totalMinutes)
           : formatTimeSpentHours(d.totalMinutes);
         parts.push(`<div class="daily-bar-wrap" title="${fullLabel}: ${displayTime}">
+          <span class="daily-bar-time">${displayTime}</span>
           <div class="daily-bar ${isZero ? 'daily-bar-zero' : ''}" style="height: ${barHeight}px"></div>
           <span class="daily-bar-label">${dt.getDate()}</span>
         </div>`);
