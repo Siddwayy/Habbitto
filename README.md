@@ -21,7 +21,7 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 - **Auth** — Email/password sign up and login via Supabase
 <img width="441" height="510" alt="image" src="https://github.com/user-attachments/assets/f59026d5-7d59-4334-a06d-1f1560a64601" />
 
-- **Habit tracker** — Custom habits, icon picker, edit/delete, mark done for the day
+- **Habit tracker** — Custom habits, icon picker, edit/delete,
 <img width="791" height="587" alt="image" src="https://github.com/user-attachments/assets/e18d1f95-2ac0-4eb1-9ffd-9d0dd77d8e16" />
 
 - **Focus timer** — Preset durations (30, 45, 60, 75, 90 min), custom duration, circular progress, optional break phase
