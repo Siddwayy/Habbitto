@@ -36,6 +36,9 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 
 
 - **Session-end flow** — Congratulatory dialog and optional sound when the focus timer finishes
+<img width="964" height="897" alt="Screenshot 2026-03-03 005930" src="https://github.com/user-attachments/assets/146db53a-da06-4117-9312-746966a57d91" />
+<img width="492" height="314" alt="Screenshot 2026-03-03 010036" src="https://github.com/user-attachments/assets/90923195-e5a9-4986-8508-b1159a30b2e0" />
+
 - **Guide** — In-app “How it works” with simple steps and icons
 - **Shortcuts** — Space to start/pause/resume; keys 1–5 for duration presets when idle
 - **Offline / local mode** — Works without Supabase using localStorage
