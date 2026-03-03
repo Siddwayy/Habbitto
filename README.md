@@ -6,7 +6,7 @@
 Build habits one session at a time.**-https://habbitto.netlify.app/
 
 ---
-<img width="815" height="1294" alt="image" src="https://github.com/user-attachments/assets/e16044ce-75bf-48c2-b7ec-4aac96cc85d2" />
+ <img width="815" height="1294" alt="image" src="https://github.com/user-attachments/assets/e16044ce-75bf-48c2-b7ec-4aac96cc85d2" />
 
 
 
