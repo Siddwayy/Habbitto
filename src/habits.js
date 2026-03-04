@@ -250,16 +250,29 @@ export function getTodayFocusMinutes() {
     .reduce((sum, c) => sum + (c.focusMinutes || 0), 0);
 }
 
+/** Normalize date string to YYYY-MM-DD for consistent comparison (handles ISO timestamps from DB). */
+function normalizeDateKey(dateStr) {
+  if (!dateStr) return '';
+  const s = String(dateStr);
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
 /** Consecutive days (including today) the habit was completed with 30+ focus minutes. 0 if not completed today. */
 export function getHabitStreak(habitId) {
   const completions = getCompletionsList();
   const today = getTodayKey();
 
-  // Build set of dates that count – only days with 30+ focus minutes for this habit
+  // Aggregate by (habitId, date) so total focus minutes per day count (not per-session)
+  const minsByDate = {};
+  completions.forEach((c) => {
+    if (c.habitId !== habitId) return;
+    const key = normalizeDateKey(c.date);
+    minsByDate[key] = (minsByDate[key] || 0) + (c.focusMinutes || 0);
+  });
   const dateSet = new Set(
-    completions
-      .filter((c) => c.habitId === habitId && (c.focusMinutes || 0) >= 30)
-      .map((c) => c.date)
+    Object.entries(minsByDate)
+      .filter(([, mins]) => mins >= 30)
+      .map(([date]) => date)
   );
 
   if (!dateSet.has(today)) return 0;
