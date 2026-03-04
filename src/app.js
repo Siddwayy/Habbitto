@@ -28,7 +28,7 @@ import { supabase } from './supabase.js';
 import * as sessionEndSound from './session-end-sound.js';
 import { initTheme, toggleTheme, getTheme } from './theme.js';
 import { setupSessionPersistence, recoverPendingSession } from './session-persistence.js';
-import { renderIcon, renderLogo } from './icons.js';
+import { renderLogo } from './icons.js';
 
 function escapeHtml(s) {
   const div = document.createElement('div');
@@ -114,7 +114,14 @@ export async function initApp() {
           <div class="header-buttons-right">
             <button type="button" class="btn btn-leaderboard" id="btn-leaderboard">Leaderboard</button>
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
-            <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
+            <label class="theme-toggle" id="btn-theme" title="Toggle theme">
+              <input type="checkbox" class="theme-toggle-input" ${getTheme() === 'dark' ? 'checked' : ''}>
+              <span class="theme-toggle-track">
+                <span class="theme-toggle-label theme-toggle-label-light">☀</span>
+                <span class="theme-toggle-label theme-toggle-label-dark">☽</span>
+                <span class="theme-toggle-thumb"></span>
+              </span>
+            </label>
           </div>
         </header>
       </div>
@@ -193,10 +200,9 @@ export async function initApp() {
       }
     };
     if (accountBtn) accountBtn.addEventListener('click', openSettings);
-    const themeBtn = app.querySelector('#btn-theme');
-    if (themeBtn) themeBtn.addEventListener('click', () => {
+    const themeToggleInput = app.querySelector('#btn-theme .theme-toggle-input');
+    if (themeToggleInput) themeToggleInput.addEventListener('change', () => {
       toggleTheme();
-      themeBtn.innerHTML = renderIcon(getTheme() === 'light' ? 'moon' : 'sun');
     });
     setUserId(session?.user?.id ?? null);
     setSessionsUserId(session?.user?.id ?? null);
@@ -324,7 +330,14 @@ export async function initApp() {
           </div>
           <div class="header-buttons-right">
             <button type="button" class="btn btn-guide" id="btn-guide">Guide</button>
-            <button type="button" class="btn btn-icon btn-theme-toggle" id="btn-theme" aria-label="Toggle theme" title="Toggle theme">${renderIcon(getTheme() === 'light' ? 'moon' : 'sun')}</button>
+            <label class="theme-toggle" id="btn-theme" title="Toggle theme">
+              <input type="checkbox" class="theme-toggle-input" ${getTheme() === 'dark' ? 'checked' : ''}>
+              <span class="theme-toggle-track">
+                <span class="theme-toggle-label theme-toggle-label-light">☀</span>
+                <span class="theme-toggle-label theme-toggle-label-dark">☽</span>
+                <span class="theme-toggle-thumb"></span>
+              </span>
+            </label>
           </div>
         </header>
       </div>
@@ -384,10 +397,9 @@ export async function initApp() {
         modal.setAttribute('aria-hidden', 'false');
       }
     });
-    const themeBtn = app.querySelector('#btn-theme');
-    if (themeBtn) themeBtn.addEventListener('click', () => {
+    const themeToggleInput2 = app.querySelector('#btn-theme .theme-toggle-input');
+    if (themeToggleInput2) themeToggleInput2.addEventListener('change', () => {
       toggleTheme();
-      themeBtn.innerHTML = renderIcon(getTheme() === 'light' ? 'moon' : 'sun');
     });
     setUserId(null);
     setSessionsUserId(null);

@@ -453,7 +453,6 @@ export function renderFocusView(container) {
     habitPicker.appendChild(cta);
   } else {
     habits.forEach((h) => {
-      const streak = getHabitStreak(h.id);
       const card = document.createElement('button');
       card.type = 'button';
       card.className = `habit-pick-card ${state.habitId === h.id ? 'selected' : ''}`;
@@ -461,7 +460,6 @@ export function renderFocusView(container) {
       card.innerHTML = `
         <span class="habit-pick-icon">${habitIconHtml(h.icon)}</span>
         <span class="habit-pick-name">${escapeHtml(h.name)}</span>
-        ${streak > 0 ? `<span class="habit-pick-streak" title="Current streak">${streak} day${streak !== 1 ? 's' : ''}</span>` : ''}
       `;
       card.addEventListener('click', () => setHabit(h.id));
       habitPicker.appendChild(card);
