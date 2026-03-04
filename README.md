@@ -41,13 +41,11 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 - **Time & streaks** — Time spent per habit, daily completions, consecutive-day streak counter
 <img width="780" height="243" alt="image" src="https://github.com/user-attachments/assets/51b2bf1d-2178-40e1-bbb5-23914158df55" />
 
-<img width="754" height="287" alt="image" src="https://github.com/user-attachments/assets/2dfe0edb-43f6-4b22-ac05-7b11c1f6a132" />
+<img width="773" height="302" alt="image" src="https://github.com/user-attachments/assets/6d554eef-eeff-4649-9a1d-87fbbc78012d" />
+
 
 
 - **Session-end flow** — Congratulatory dialog and optional sound when the focus timer finishes
-<img width="964" height="897" alt="Screenshot 2026-03-03 005930" src="https://github.com/user-attachments/assets/146db53a-da06-4117-9312-746966a57d91" />
-<img width="777" height="296" alt="image" src="https://github.com/user-attachments/assets/844f2031-71c3-4ba9-a42f-03254182a9a7" />
-
 
 - **Guide** — In-app “How it works” with simple steps and icons
 - **Shortcuts** — Space to start/pause/resume; keys 1–5 for duration presets when idle
