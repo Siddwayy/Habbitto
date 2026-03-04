@@ -3,13 +3,13 @@
 
 **Habit tracker with a built-in focus timer and stopwatch. 
 
-Download for Dekstop-https://drive.google.com/file/d/19hz0xK5ZFSMVVUohZKmw5BDZ9RcwAtFJ/view?usp=sharing
 
 Use in Browser-https://habbitto.netlify.app/
 
 
 ---
-   <img width="815" height="1294" alt="image" src="https://github.com/user-attachments/assets/e16044ce-75bf-48c2-b7ec-4aac96cc85d2" />
+<img width="797" height="1166" alt="image" src="https://github.com/user-attachments/assets/9940f8ce-b1bd-4234-95be-ec31f2bae788" />
+
 
 
 
