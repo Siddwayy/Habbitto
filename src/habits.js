@@ -1,6 +1,6 @@
 import { getHabits, setHabits, getCompletions, setCompletions } from './storage.js';
 import * as db from './storage-supabase.js';
-import { addSession } from './sessions.js';
+import { addSession, getSessionsList } from './sessions.js';
 
 const PRESET_ICONS = [
   'book', 'dumbbell', 'heart', 'moon', 'droplet', 'graduation-cap',
@@ -260,14 +260,25 @@ function normalizeDateKey(dateStr) {
 /** Consecutive days (including today) the habit was completed with 30+ focus minutes. 0 if not completed today. */
 export function getHabitStreak(habitId) {
   const completions = getCompletionsList();
+  const sessions = getSessionsList();
   const today = getTodayKey();
 
-  // Aggregate by (habitId, date) so total focus minutes per day count (not per-session)
+  // Total focus minutes per day from completions (one row per habit+date)
   const minsByDate = {};
   completions.forEach((c) => {
     if (c.habitId !== habitId) return;
     const key = normalizeDateKey(c.date);
     minsByDate[key] = (minsByDate[key] || 0) + (c.focusMinutes || 0);
+  });
+  // Include older saved sessions: sum focus minutes per day from sessions, then take max with completions (avoids double-counting when both exist)
+  const sessionMinsByDate = {};
+  sessions.forEach((s) => {
+    if (s.habitId !== habitId) return;
+    const key = normalizeDateKey(s.date);
+    sessionMinsByDate[key] = (sessionMinsByDate[key] || 0) + (s.focusMinutes || 0);
+  });
+  Object.entries(sessionMinsByDate).forEach(([date, mins]) => {
+    minsByDate[date] = Math.max(minsByDate[date] || 0, mins);
   });
   const dateSet = new Set(
     Object.entries(minsByDate)
