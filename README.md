@@ -8,7 +8,8 @@ Use in Browser-https://habbitto.netlify.app/
 
 
 ---
-<img width="797" height="1166" alt="image" src="https://github.com/user-attachments/assets/9940f8ce-b1bd-4234-95be-ec31f2bae788" />
+<img width="2171" height="1249" alt="image" src="https://github.com/user-attachments/assets/a0e92371-20bb-4a6c-ada0-5c4635be19b5" />
+
 
 
 
