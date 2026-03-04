@@ -73,14 +73,6 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 - Modals for account, guide, and session-end; tab title shows remaining time when the timer is running
 
 ---
-
-## Links
-
-- **Live site:** [https://dancing-churros-0d7f45.netlify.app/]
-- **Source code:** This repository
-
----
-
 ## Challenges & learnings
 
 - **Supabase RLS** — Policies so users only see and edit their own habits, completions, and sessions
