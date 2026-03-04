@@ -23,25 +23,31 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 ## Features
 
 - **Auth** — Email/password sign up and login via Supabase
-<img width="441" height="510" alt="image" src="https://github.com/user-attachments/assets/f59026d5-7d59-4334-a06d-1f1560a64601" />
+<img width="443" height="505" alt="image" src="https://github.com/user-attachments/assets/53925c69-cccb-4e83-8849-5b1494a89754" />
+
 
 - **Habit tracker** — Custom habits, icon picker, edit/delete,
-<img width="791" height="587" alt="image" src="https://github.com/user-attachments/assets/e18d1f95-2ac0-4eb1-9ffd-9d0dd77d8e16" />
+<img width="775" height="583" alt="image" src="https://github.com/user-attachments/assets/bb02cac3-0ce0-4901-bdc1-b474c2a7d623" />
+
 
 - **Focus timer** — Preset durations (30, 45, 60, 75, 90 min), custom duration, circular progress, optional break phase
-<img width="708" height="720" alt="image" src="https://github.com/user-attachments/assets/d3bfd58e-6970-4e6d-8d0b-81a3d60d2c9b" />
+<img width="770" height="732" alt="image" src="https://github.com/user-attachments/assets/c4b2e1fc-a45f-4c1d-ae92-224bce184c3c" />
+
 
 - **Stopwatch** — Free-form timing with save to habit
-<img width="719" height="664" alt="image" src="https://github.com/user-attachments/assets/c86c4ce7-2b0a-4ad6-bdc7-7adfacf45a80" />
+<img width="786" height="743" alt="image" src="https://github.com/user-attachments/assets/6462663e-6072-48ca-8371-1ca997a164cd" />
+
 
 - **Time & streaks** — Time spent per habit, daily completions, consecutive-day streak counter
- <img width="760" height="275" alt="image" src="https://github.com/user-attachments/assets/1a4126d2-204f-46a3-969f-240074443dc0" />
+<img width="780" height="243" alt="image" src="https://github.com/user-attachments/assets/51b2bf1d-2178-40e1-bbb5-23914158df55" />
+
 <img width="754" height="287" alt="image" src="https://github.com/user-attachments/assets/2dfe0edb-43f6-4b22-ac05-7b11c1f6a132" />
 
 
 - **Session-end flow** — Congratulatory dialog and optional sound when the focus timer finishes
 <img width="964" height="897" alt="Screenshot 2026-03-03 005930" src="https://github.com/user-attachments/assets/146db53a-da06-4117-9312-746966a57d91" />
-<img width="492" height="314" alt="Screenshot 2026-03-03 010036" src="https://github.com/user-attachments/assets/90923195-e5a9-4986-8508-b1159a30b2e0" />
+<img width="777" height="296" alt="image" src="https://github.com/user-attachments/assets/844f2031-71c3-4ba9-a42f-03254182a9a7" />
+
 
 - **Guide** — In-app “How it works” with simple steps and icons
 - **Shortcuts** — Space to start/pause/resume; keys 1–5 for duration presets when idle
