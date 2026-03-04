@@ -36,7 +36,7 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 <img width="443" height="505" alt="image" src="https://github.com/user-attachments/assets/53925c69-cccb-4e83-8849-5b1494a89754" />
 
 
-- **Habit tracker** — Custom habits, icon picker, edit/delete,
+- **Habits** — Custom habits, icon picker, edit/delete,
 <img width="775" height="583" alt="image" src="https://github.com/user-attachments/assets/bb02cac3-0ce0-4901-bdc1-b474c2a7d623" />
 
 
@@ -52,15 +52,6 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 <img width="780" height="243" alt="image" src="https://github.com/user-attachments/assets/51b2bf1d-2178-40e1-bbb5-23914158df55" />
 
 <img width="773" height="302" alt="image" src="https://github.com/user-attachments/assets/6d554eef-eeff-4649-9a1d-87fbbc78012d" />
-
-
-
-- **Session-end flow** — Congratulatory dialog and optional sound when the focus timer finishes
-
-- **Guide** — In-app “How it works” with simple steps and icons
-- **Shortcuts** — Space to start/pause/resume; keys 1–5 for duration presets when idle
-- **Offline / local mode** — Works without Supabase using localStorage
-
 ---
 
 ## Tech stack
