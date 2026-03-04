@@ -1,7 +1,7 @@
 
 # Habbitto
 
-**Habit tracker with a built-in focus timer and stopwatch. 
+Habit tracker with a built-in focus timer and stopwatch. 
 
 
 Use in Browser-https://habbitto.netlify.app/
