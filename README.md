@@ -20,7 +20,17 @@ Habbitto helps you build habits by tying them to focused work blocks. Instead of
 
 ---
 
-## Features
+| Feature              | Description                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| Auth                 | Email/password sign-up and login via Supabase                                                       |
+| Habit Tracker        | Custom habits, icon picker, edit/delete                                                             |
+| Focus Timer          | Preset durations (30, 45, 60, 75, 90 min), custom duration, circular progress, optional break phase |
+| Stopwatch            | Free-form timing with save to habit                                                                 |
+| Time & Streaks       | Time spent per habit, daily completions, consecutive-day streak counter                             |
+| Session-End Flow     | Congratulatory dialog and optional sound when the focus timer finishes                              |
+| Guide                | In-app “How it works” section with simple steps and icons                                           |
+| Shortcuts            | Space to start/pause/resume; keys 1–5 for duration presets when idle                                |
+| Offline / Local Mode | Works without Supabase using localStorage                                                           |
 
 - **Auth** — Email/password sign up and login via Supabase
 <img width="443" height="505" alt="image" src="https://github.com/user-attachments/assets/53925c69-cccb-4e83-8849-5b1494a89754" />
