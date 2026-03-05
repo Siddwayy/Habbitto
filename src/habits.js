@@ -257,20 +257,23 @@ function normalizeDateKey(dateStr) {
   return s.length >= 10 ? s.slice(0, 10) : s;
 }
 
-/** Consecutive days (including today) the habit was completed with 30+ focus minutes. 0 if not completed today. */
+/**
+ * Consecutive days the habit was completed with 30+ focus minutes.
+ * If today is already completed, counts today + prior consecutive days.
+ * If today is NOT yet completed, counts backwards from yesterday so the
+ * streak survives until the day is over (grace period).
+ */
 export function getHabitStreak(habitId) {
   const completions = getCompletionsList();
   const sessions = getSessionsList();
   const today = getTodayKey();
 
-  // Total focus minutes per day from completions (one row per habit+date)
   const minsByDate = {};
   completions.forEach((c) => {
     if (c.habitId !== habitId) return;
     const key = normalizeDateKey(c.date);
     minsByDate[key] = (minsByDate[key] || 0) + (c.focusMinutes || 0);
   });
-  // Include older saved sessions: sum focus minutes per day from sessions, then take max with completions (avoids double-counting when both exist)
   const sessionMinsByDate = {};
   sessions.forEach((s) => {
     if (s.habitId !== habitId) return;
@@ -286,10 +289,16 @@ export function getHabitStreak(habitId) {
       .map(([date]) => date)
   );
 
-  if (!dateSet.has(today)) return 0;
-  let streak = 0;
   const d = new Date();
   d.setHours(0, 0, 0, 0);
+
+  const todayDone = dateSet.has(today);
+  if (!todayDone) {
+    d.setDate(d.getDate() - 1);
+    if (!dateSet.has(toDateKey(d))) return 0;
+  }
+
+  let streak = 0;
   while (true) {
     const key = toDateKey(d);
     if (!dateSet.has(key)) break;
